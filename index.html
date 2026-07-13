@@ -54,8 +54,10 @@
   button.iconbtn{padding:0 12px; min-width:38px;}
   button.danger{background:#7f1d1d; color:#fecaca; padding:5px 10px; font-size:0.78rem;}
   button.edit{background:#1e3a5f; color:#93c5fd; padding:5px 10px; font-size:0.78rem;}
+  button.baixa{background:#14532d; color:#86efac; padding:5px 10px; font-size:0.78rem;}
   button:hover{opacity:0.9;}
   .hint{font-size:0.72rem; color:var(--muted);}
+  .quitada-tag{background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600;}
 
   table{width:100%; border-collapse:collapse; font-size:0.85rem;}
   th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
@@ -76,7 +78,7 @@
   .list-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.87rem; gap:10px;}
   .list-item:last-child{border-bottom:none;}
   .list-item .meta{color:var(--muted); font-size:0.76rem;}
-  .list-item .actions{display:flex; gap:6px; flex-shrink:0;}
+  .list-item .actions{display:flex; gap:6px; flex-shrink:0; align-items:center;}
   .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
   .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
@@ -120,7 +122,7 @@
 
 <div class="header-block">
   <h1>Planilha Financeira Micelc</h1>
-  <div class="sub">Registre receitas, despesas, cartão de crédito, dívidas, conta corrente e investimentos, tudo em um único lançamento. Clique nos cards para ver o razão de cada um.</div>
+  <div class="sub">Registre receitas, despesas, cartões de crédito, dívidas, conta corrente e investimentos. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
     <button class="secondary small" id="logoutBtn">Sair</button>
@@ -131,7 +133,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receitas somam e despesas descontam automaticamente do saldo da conta corrente.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -154,6 +156,10 @@
         <select id="lancCategoria" style="flex:1;"></select>
         <button type="button" class="secondary iconbtn" onclick="adicionarCategoria()" title="Nova categoria">+</button>
       </div>
+    </div>
+    <div class="field" id="fieldCartaoNome">
+      <label>Nome do cartão</label>
+      <input type="text" id="lancCartaoNome" placeholder="ex: Nubank, Inter...">
     </div>
     <div class="field">
       <label>Valor (R$)</label>
@@ -221,21 +227,18 @@
 
 <div class="grid2 row-gap">
   <div class="panel">
-    <h2><span class="title">🏦 Conta Corrente</span><button class="secondary small" onclick="novoLancamento('conta')">+ Atualizar saldo</button></h2>
+    <h2><span class="title">🏦 Conta Corrente</span><button class="secondary small" onclick="novoLancamento('conta')">+ Ajustar saldo base</button></h2>
     <div class="card" style="margin:0;">
-      <div class="label">Saldo mais recente</div>
+      <div class="label">Saldo atual (calculado)</div>
       <div class="value info" id="contaSaldoDisplay">R$ 0,00</div>
       <div class="hint" id="contaDataDisplay" style="margin-top:6px;"></div>
     </div>
   </div>
 
   <div class="panel">
-    <h2><span class="title">💳 Cartão de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Atualizar fatura</button></h2>
-    <div class="card" style="margin:0;">
-      <div class="label">Fatura mais recente</div>
-      <div class="value warn" id="cartaoFaturaDisplay">R$ 0,00</div>
-      <div class="hint" id="cartaoDetalheDisplay" style="margin-top:6px;"></div>
-    </div>
+    <h2><span class="title">💳 Cartões de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Novo cartão</button></h2>
+    <div id="cartoesList"></div>
+    <div class="totals-line"><span>Fatura total (todos os cartões)</span><span id="cartoesTotal">R$ 0,00</span></div>
   </div>
 </div>
 
@@ -385,6 +388,17 @@ const CORES = ['#3b82f6','#ef4444','#22c55e','#eab308','#a855f7','#f97316','#14b
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
+function addOneMonth(dateStr){
+  const partes = dateStr.split('-').map(Number);
+  const y = partes[0], m = partes[1], d = partes[2];
+  let newMonth = m + 1;
+  let newYear = y;
+  if(newMonth > 12){ newMonth = 1; newYear += 1; }
+  const lastDay = new Date(newYear, newMonth, 0).getDate();
+  const newDay = Math.min(d, lastDay);
+  return `${newYear}-${String(newMonth).padStart(2,'0')}-${String(newDay).padStart(2,'0')}`;
+}
+
 let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
 let charts = {};
 let editingId = null;
@@ -446,6 +460,7 @@ function adicionarCategoria(){
 function updateFormFieldsVisibility(tipo){
   const map = {
     fieldCategoria: tipo === 'receita' || tipo === 'despesa',
+    fieldCartaoNome: tipo === 'cartao',
     fieldLimite: tipo === 'cartao',
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
     fieldParcelas: tipo === 'divida',
@@ -473,13 +488,35 @@ function sumByTipo(tipo){
   return data.lancamentos.filter(l => l.tipo === tipo).reduce((s,l) => s + Number(l.valor), 0);
 }
 
+// Saldo da conta corrente = última atualização manual (checkpoint) + receitas/despesas lançadas depois dela
+function calcularSaldoContaCorrente(){
+  const baseline = latestByTipo('conta');
+  const baselineValor = baseline ? Number(baseline.valor) : 0;
+  const baselineData = baseline ? baseline.data : null;
+  const movimentos = data.lancamentos.filter(l => (l.tipo === 'receita' || l.tipo === 'despesa') && (!baselineData || l.data > baselineData));
+  const somaMovimentos = movimentos.reduce((s,l) => s + (l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor)), 0);
+  return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
+}
+
+// Cartões: agrupa lançamentos tipo cartao por nome, pega o mais recente de cada
+function cartoesAgrupados(){
+  const itens = data.lancamentos.filter(l => l.tipo === 'cartao');
+  const nomes = [...new Set(itens.map(l => l.nome || 'Cartão'))];
+  return nomes.map(nome => {
+    const doNome = itens.filter(l => (l.nome || 'Cartão') === nome);
+    const latest = doNome.reduce((a,b) => (b.data >= a.data ? b : a));
+    return { nome, latest };
+  }).sort((a,b) => a.nome.localeCompare(b.nome));
+}
+
 function renderAll(){
   renderSummary();
   renderTable();
   renderCharts();
   renderDividas();
   renderInvestimentos();
-  renderContaCartaoPanels();
+  renderContaPanel();
+  renderCartoesPanel();
   if(razaoAtualKey) renderRazaoContent();
 }
 
@@ -489,17 +526,18 @@ function renderSummary(){
   const receitaMes = mesItems.filter(l=>l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
   const despesaMes = mesItems.filter(l=>l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
   const resultado = receitaMes - despesaMes;
-  const contaAtual = latestByTipo('conta');
-  const cartaoAtual = latestByTipo('cartao');
+  const saldoConta = calcularSaldoContaCorrente().saldo;
+  const cartoes = cartoesAgrupados();
+  const faturaTotal = cartoes.reduce((s,c)=>s+Number(c.latest.valor),0);
   const totalDividas = sumByTipo('divida');
   const totalInvest = sumByTipo('investimento');
 
   const cards = [
-    {key:'conta', label:'Saldo Conta Corrente', value: fmt(contaAtual ? contaAtual.valor : 0), cls:'info'},
+    {key:'conta', label:'Saldo Conta Corrente', value: fmt(saldoConta), cls: saldoConta>=0?'info':'neg'},
     {key:'receitaMes', label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
     {key:'despesaMes', label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
     {key:'resultadoMes', label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
-    {key:'cartao', label:'Fatura Cartão', value: fmt(cartaoAtual ? cartaoAtual.valor : 0), cls:'warn'},
+    {key:'cartao', label:'Fatura Cartão', value: fmt(faturaTotal), cls:'warn'},
     {key:'investimento', label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
     {key:'divida', label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
   ];
@@ -514,25 +552,29 @@ function renderSummary(){
 function detalheFor(item){
   if(item.tipo === 'receita' || item.tipo === 'despesa') return item.categoria || '-';
   if(item.tipo === 'cartao'){
-    const partes = [];
+    const partes = [item.nome || 'Cartão'];
     if(item.limite) partes.push('Limite ' + fmt(item.limite));
     if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
-    return partes.length ? partes.join(' • ') : '-';
+    return partes.join(' • ');
   }
   if(item.tipo === 'divida'){
     const partes = [];
-    if(item.parcelas) partes.push(item.parcelas + 'x restantes');
+    if(item.parcelas !== null && item.parcelas !== undefined) partes.push(item.parcelas + 'x restantes');
     if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
     return partes.length ? partes.join(' • ') : '-';
   }
   if(item.tipo === 'investimento') return item.tipoInvestimento || '-';
-  if(item.tipo === 'conta') return 'Atualização de saldo';
+  if(item.tipo === 'conta') return 'Ajuste de saldo base';
   return '-';
 }
 
 function linhaLancamentoHtml(item){
   const tag = TAG_INFO[item.tipo] || {label:item.tipo, cls:''};
   const corValor = (item.tipo === 'receita' || item.tipo === 'investimento') ? 'pos' : (item.tipo === 'despesa' || item.tipo === 'divida') ? 'neg' : 'info';
+  let acoesExtra = '';
+  if(item.tipo === 'divida' && Number(item.parcelas) > 0){
+    acoesExtra = `<button class="baixa" onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
+  }
   return `
     <tr>
       <td>${fmtDate(item.data)}</td>
@@ -541,6 +583,7 @@ function linhaLancamentoHtml(item){
       <td>${item.descricao || '-'}</td>
       <td class="${corValor}">${fmt(item.valor)}</td>
       <td class="actions-cell">
+        ${acoesExtra}
         <button class="edit" onclick="editLancamento('${item.id}')">Editar</button>
         <button class="danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
       </td>
@@ -581,6 +624,7 @@ function editLancamento(id){
   }
   document.getElementById('lancValor').value = item.valor;
   document.getElementById('lancDescricao').value = item.descricao || '';
+  document.getElementById('lancCartaoNome').value = item.nome || '';
   document.getElementById('lancLimite').value = item.limite || '';
   document.getElementById('lancVencimento').value = item.vencimento || '';
   document.getElementById('lancParcelas').value = item.parcelas || '';
@@ -606,7 +650,40 @@ function novoLancamento(tipo){
   document.getElementById('lancTipo').value = tipo;
   updateFormFieldsVisibility(tipo);
   document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
-  setTimeout(()=>document.getElementById('lancValor').focus(), 300);
+  const focoId = tipo === 'cartao' ? 'lancCartaoNome' : 'lancValor';
+  setTimeout(()=>document.getElementById(focoId).focus(), 300);
+}
+
+// Baixa mensal de parcela de dívida: lança a despesa do mês, reduz parcelas e saldo devedor, avança vencimento
+function baixarParcela(id){
+  const item = data.lancamentos.find(l => l.tipo === 'divida' && l.id === id);
+  if(!item) return;
+  if(!item.parcelas || item.parcelas <= 0){
+    alert('Esta dívida já está quitada.');
+    return;
+  }
+  const sugestao = Number(item.valor) / Number(item.parcelas);
+  const entrada = prompt('Valor da parcela paga agora (' + (item.descricao || 'dívida') + '):', sugestao.toFixed(2));
+  if(entrada === null) return;
+  const valorPago = parseFloat(String(entrada).replace(',', '.')) || sugestao;
+
+  data.lancamentos.push({
+    id: uid(),
+    data: new Date().toISOString().slice(0,10),
+    tipo: 'despesa',
+    categoria: 'Dívidas',
+    valor: Number(valorPago.toFixed(2)),
+    descricao: 'Parcela paga - ' + (item.descricao || 'dívida'),
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null
+  });
+
+  item.valor = Math.max(0, Number((Number(item.valor) - valorPago).toFixed(2)));
+  item.parcelas = Math.max(0, Number(item.parcelas) - 1);
+  if(item.vencimento) item.vencimento = addOneMonth(item.vencimento);
+  if(item.parcelas <= 0){ item.parcelas = 0; item.valor = 0; }
+
+  saveData();
+  renderAll();
 }
 
 // ---------- Razão (detalhe por card) ----------
@@ -615,42 +692,43 @@ function getRazaoConfig(key){
   const monthLabel = monthKey ? monthKey.split('-').reverse().join('/') : '';
   let itens = [];
   let titulo = '';
-  let modoValorAtual = false;
+  let total = 0;
+  let totalLabel = 'Total';
+
   if(key === 'conta'){
-    itens = data.lancamentos.filter(l=>l.tipo==='conta');
-    titulo = 'Razão — Conta Corrente (histórico de atualizações)';
-    modoValorAtual = true;
+    const calc = calcularSaldoContaCorrente();
+    itens = calc.baseline ? [calc.baseline].concat(calc.movimentos) : calc.movimentos;
+    titulo = 'Razão — Conta Corrente (saldo base + movimentações)';
+    total = calc.saldo;
+    totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
     itens = data.lancamentos.filter(l=>l.tipo==='cartao');
-    titulo = 'Razão — Cartão de Crédito (histórico de faturas)';
-    modoValorAtual = true;
+    titulo = 'Razão — Cartões de Crédito (todas as faturas lançadas)';
+    total = cartoesAgrupados().reduce((s,c)=>s+Number(c.latest.valor),0);
+    totalLabel = 'Fatura total (todos os cartões)';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
     titulo = 'Razão — Dívidas';
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'investimento'){
     itens = data.lancamentos.filter(l=>l.tipo==='investimento');
     titulo = 'Razão — Investimentos';
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'receitaMes'){
     itens = data.lancamentos.filter(l=>l.tipo==='receita' && itemInMonth(l, monthKey));
     titulo = 'Razão — Receitas de ' + monthLabel;
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'despesaMes'){
     itens = data.lancamentos.filter(l=>l.tipo==='despesa' && itemInMonth(l, monthKey));
     titulo = 'Razão — Despesas de ' + monthLabel;
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'resultadoMes'){
     itens = data.lancamentos.filter(l=>(l.tipo==='receita'||l.tipo==='despesa') && itemInMonth(l, monthKey));
     titulo = 'Razão — Resultado de ' + monthLabel;
-  }
-  itens = itens.slice().sort((a,b)=> b.data.localeCompare(a.data));
-  let total;
-  let totalLabel = 'Total';
-  if(modoValorAtual){
-    total = itens.length ? Number(itens[0].valor) : 0;
-    totalLabel = 'Valor mais recente';
-  } else if(key === 'resultadoMes'){
     total = itens.reduce((s,l)=> s + (l.tipo==='receita' ? Number(l.valor) : -Number(l.valor)), 0);
-  } else {
-    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   }
+
+  itens = itens.slice().sort((a,b)=> b.data.localeCompare(a.data));
   return {titulo, itens, total, totalLabel};
 }
 
@@ -787,19 +865,23 @@ function renderDividas(){
   if(itens.length === 0){
     list.innerHTML = '<div class="empty">Nenhuma dívida cadastrada.</div>';
   } else {
-    list.innerHTML = itens.map(d => `
+    list.innerHTML = itens.map(d => {
+      const quitada = !d.parcelas || Number(d.parcelas) <= 0;
+      return `
       <div class="list-item">
         <div>
           <div>${d.descricao || 'Dívida'}</div>
-          <div class="meta">${d.parcelas ? d.parcelas + 'x restantes • ' : ''}vence ${fmtDate(d.vencimento)}</div>
+          <div class="meta">${quitada ? 'Quitada' : (d.parcelas + 'x restantes • vence ' + fmtDate(d.vencimento))}</div>
         </div>
         <div class="actions">
           <span class="neg" style="margin-right:6px;">${fmt(d.valor)}</span>
+          ${quitada ? '<span class="quitada-tag">Quitada ✓</span>' : `<button class="baixa" onclick="baixarParcela('${d.id}')">Baixar parcela</button>`}
           <button class="edit" onclick="editLancamento('${d.id}')">Editar</button>
           <button class="danger" onclick="deleteLancamento('${d.id}')">x</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
   document.getElementById('dividasTotal').textContent = fmt(sumByTipo('divida'));
 }
@@ -827,22 +909,43 @@ function renderInvestimentos(){
   document.getElementById('investTotal').textContent = fmt(sumByTipo('investimento'));
 }
 
-function renderContaCartaoPanels(){
-  const conta = latestByTipo('conta');
-  document.getElementById('contaSaldoDisplay').textContent = fmt(conta ? conta.valor : 0);
-  document.getElementById('contaDataDisplay').textContent = conta ? 'Atualizado em ' + fmtDate(conta.data) : 'Nenhum lançamento ainda';
-
-  const cartao = latestByTipo('cartao');
-  document.getElementById('cartaoFaturaDisplay').textContent = fmt(cartao ? cartao.valor : 0);
-  if(cartao){
-    const uso = cartao.limite ? ((cartao.valor / cartao.limite) * 100).toFixed(1) : null;
-    const partes = [];
-    if(cartao.limite) partes.push('Limite ' + fmt(cartao.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
-    if(cartao.vencimento) partes.push('Vence ' + fmtDate(cartao.vencimento));
-    document.getElementById('cartaoDetalheDisplay').textContent = partes.length ? partes.join(' • ') : 'Atualizado em ' + fmtDate(cartao.data);
+function renderContaPanel(){
+  const calc = calcularSaldoContaCorrente();
+  document.getElementById('contaSaldoDisplay').textContent = fmt(calc.saldo);
+  if(calc.baseline){
+    document.getElementById('contaDataDisplay').textContent = 'Base ' + fmt(calc.baseline.valor) + ' em ' + fmtDate(calc.baseline.data) + ' + ' + calc.movimentos.length + ' lançamento(s) depois';
   } else {
-    document.getElementById('cartaoDetalheDisplay').textContent = 'Nenhum lançamento ainda';
+    document.getElementById('contaDataDisplay').textContent = 'Nenhum ajuste de saldo base ainda — calculado só com receitas/despesas lançadas';
   }
+}
+
+function renderCartoesPanel(){
+  const list = document.getElementById('cartoesList');
+  const cartoes = cartoesAgrupados();
+  if(cartoes.length === 0){
+    list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
+  } else {
+    list.innerHTML = cartoes.map(c => {
+      const uso = c.latest.limite ? ((c.latest.valor / c.latest.limite) * 100).toFixed(1) : null;
+      const metaPartes = [];
+      if(c.latest.limite) metaPartes.push('Limite ' + fmt(c.latest.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
+      if(c.latest.vencimento) metaPartes.push('Vence ' + fmtDate(c.latest.vencimento));
+      return `
+      <div class="list-item">
+        <div>
+          <div>${c.nome}</div>
+          <div class="meta">${metaPartes.length ? metaPartes.join(' • ') : 'Atualizado em ' + fmtDate(c.latest.data)}</div>
+        </div>
+        <div class="actions">
+          <span class="warn" style="margin-right:6px;">${fmt(c.latest.valor)}</span>
+          <button class="edit" onclick="editLancamento('${c.latest.id}')">Editar</button>
+        </div>
+      </div>
+    `;
+    }).join('');
+  }
+  const total = cartoes.reduce((s,c)=>s+Number(c.latest.valor),0);
+  document.getElementById('cartoesTotal').textContent = fmt(total);
 }
 
 // Event listeners
@@ -862,6 +965,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     categoria: (tipo === 'receita' || tipo === 'despesa') ? document.getElementById('lancCategoria').value : null,
     valor: parseFloat(document.getElementById('lancValor').value) || 0,
     descricao: document.getElementById('lancDescricao').value.trim(),
+    nome: tipo === 'cartao' ? (document.getElementById('lancCartaoNome').value.trim() || 'Cartão') : null,
     limite: tipo === 'cartao' ? (parseFloat(document.getElementById('lancLimite').value) || 0) : null,
     vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
     parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
