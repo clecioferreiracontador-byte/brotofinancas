@@ -98,6 +98,21 @@
   .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto;}
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
   .modal-header h3{margin:0; font-size:1.05rem;}
+
+  /* Orçamento do mês - botão pequeno no canto (só aparece logado) + modal */
+  #orcamentoIconBtn{
+    position:fixed; top:16px; left:16px; z-index:950; background:var(--purple); color:white;
+    border:none; border-radius:10px; padding:9px 14px; font-size:0.78rem; font-weight:700; cursor:pointer;
+    box-shadow:0 2px 10px rgba(0,0,0,0.4); align-items:center; gap:6px;
+  }
+  #orcamentoIconBtn:hover{opacity:0.9;}
+  .orc-total-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:16px;}
+  .orc-bar-wrap{height:9px; background:var(--card2); border-radius:5px; overflow:hidden; margin-top:8px;}
+  .orc-total-box .orc-bar-wrap{background:#0f172a;}
+  .orc-bar{height:100%; border-radius:5px; background:var(--green); transition:width .3s;}
+  .orc-cat-row{margin-bottom:12px; font-size:0.8rem;}
+  .orc-cat-row .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;}
+  .orc-cat-row .linha1 input{width:82px; padding:4px 6px; font-size:0.75rem; min-width:0;}
 </style>
 </head>
 <body>
@@ -118,6 +133,31 @@
   </div>
 </div>
 
+<button id="orcamentoIconBtn" onclick="abrirOrcamento()" style="display:none;">📅 Orçamento</button>
+
+<div id="orcamentoModal" class="modal-overlay" onclick="if(event.target===this) fecharOrcamento()">
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Orçamento do Mês</h3>
+      <button class="secondary small" onclick="fecharOrcamento()">Fechar</button>
+    </div>
+    <div class="hint" id="orcamentoMesLabel" style="margin-bottom:12px;"></div>
+    <div class="orc-total-box">
+      <div class="field" style="margin-bottom:0;">
+        <label>Orçamento total do mês (R$)</label>
+        <input type="number" step="0.01" min="0" id="orcamentoTotalInput" placeholder="0,00" onchange="salvarOrcamentoTotal(parseFloat(this.value)||0)">
+      </div>
+      <div class="orc-bar-wrap"><div class="orc-bar" id="orcamentoTotalBar" style="width:0%;"></div></div>
+      <div class="hint" style="display:flex; justify-content:space-between; margin-top:6px;">
+        <span>Gasto: <span id="orcamentoTotalGasto">R$ 0,00</span></span>
+        <span>Restante: <span id="orcamentoTotalRestante">R$ 0,00</span></span>
+      </div>
+    </div>
+    <div class="hint" style="margin-bottom:8px;">Orçamento por categoria (despesas + lançamentos de cartão)</div>
+    <div id="orcamentoCategoriasList"></div>
+  </div>
+</div>
+
 <div id="appScreen" style="display:none;">
 
 <div class="header-block">
@@ -133,7 +173,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receitas somam e despesas descontam automaticamente do saldo da conta corrente. Lançamentos de cartão com o mesmo nome se somam na fatura daquele cartão.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use o botão roxo "Orçamento" no canto superior esquerdo para controlar quanto pode gastar por categoria.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -150,16 +190,16 @@
         <option value="investimento">Investimento</option>
       </select>
     </div>
+    <div class="field" id="fieldCartaoNome">
+      <label>Nome do cartão</label>
+      <input type="text" id="lancCartaoNome" placeholder="ex: Nubank, Inter...">
+    </div>
     <div class="field" id="fieldCategoria">
       <label>Categoria</label>
       <div style="display:flex; gap:6px;">
         <select id="lancCategoria" style="flex:1;"></select>
         <button type="button" class="secondary iconbtn" onclick="adicionarCategoria()" title="Nova categoria">+</button>
       </div>
-    </div>
-    <div class="field" id="fieldCartaoNome">
-      <label>Nome do cartão</label>
-      <input type="text" id="lancCartaoNome" placeholder="ex: Nubank, Inter...">
     </div>
     <div class="field">
       <label>Valor (R$)</label>
@@ -196,7 +236,7 @@
   </form>
 
   <div class="month-filter">
-    <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a tabela abaixo):</label>
+    <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a tabela abaixo e o orçamento):</label>
     <input type="month" id="filtroMes">
   </div>
 
@@ -267,6 +307,10 @@
       <button class="secondary small" onclick="fecharRazao()">Fechar</button>
     </div>
     <div id="razaoResumoCartoes"></div>
+    <div id="razaoChartContainer" style="display:none; margin-bottom:16px;">
+      <div class="hint" style="margin-bottom:6px;">Despesa por categoria no cartão</div>
+      <div class="chart-box" style="height:220px;"><canvas id="chartRazaoCategoria"></canvas></div>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
@@ -314,16 +358,20 @@ function showLoading(){
   document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('orcamentoIconBtn').style.display = 'none';
 }
 function showLogin(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('orcamentoIconBtn').style.display = 'none';
+  fecharOrcamento();
 }
 function showApp(){
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('orcamentoIconBtn').style.display = 'flex';
 }
 
 auth.onAuthStateChanged(function(user){
@@ -337,8 +385,9 @@ auth.onAuthStateChanged(function(user){
         if(!data.lancamentos) data.lancamentos = [];
         if(!data.categoriasReceita) data.categoriasReceita = [];
         if(!data.categoriasDespesa) data.categoriasDespesa = [];
+        if(!data.orcamentos) data.orcamentos = {};
       } else {
-        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
+        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
         if(localRaw){
           try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
@@ -352,7 +401,7 @@ auth.onAuthStateChanged(function(user){
       document.getElementById('loginError').textContent = 'Erro ao carregar dados: ' + err.message;
     });
   } else {
-    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
+    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
     showLogin();
   }
 });
@@ -400,7 +449,7 @@ function addOneMonth(dateStr){
   return `${newYear}-${String(newMonth).padStart(2,'0')}-${String(newDay).padStart(2,'0')}`;
 }
 
-let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [] };
+let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {} };
 let charts = {};
 let editingId = null;
 let razaoAtualKey = null;
@@ -425,11 +474,18 @@ const TAG_INFO = {
   investimento: {label:'Investimento', cls:'investimento'}
 };
 
+function categoriasBaseParaTipo(tipo){
+  return tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+}
+function categoriasExtrasParaTipo(tipo){
+  return tipo === 'receita' ? (data.categoriasReceita||[]) : (data.categoriasDespesa||[]);
+}
+
 function populateCategoriaSelect(){
   const tipo = document.getElementById('lancTipo').value;
   const sel = document.getElementById('lancCategoria');
-  const base = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
-  const extras = tipo === 'receita' ? (data.categoriasReceita||[]) : (data.categoriasDespesa||[]);
+  const base = categoriasBaseParaTipo(tipo);
+  const extras = categoriasExtrasParaTipo(tipo);
   const lista = base.concat(extras.filter(c => !base.includes(c)));
   const valorAtual = sel.value;
   sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -438,15 +494,16 @@ function populateCategoriaSelect(){
 
 function adicionarCategoria(){
   const tipo = document.getElementById('lancTipo').value;
-  if(tipo !== 'receita' && tipo !== 'despesa'){
-    alert('Selecione o tipo Receita ou Despesa antes de criar uma categoria.');
+  if(tipo !== 'receita' && tipo !== 'despesa' && tipo !== 'cartao'){
+    alert('Selecione o tipo Receita, Despesa ou Cartão antes de criar uma categoria.');
     return;
   }
-  const nome = prompt('Nome da nova categoria de ' + (tipo === 'receita' ? 'receita' : 'despesa') + ':');
+  const tipoLista = tipo === 'receita' ? 'receita' : 'despesa';
+  const nome = prompt('Nome da nova categoria de ' + tipoLista + ':');
   if(!nome || !nome.trim()) return;
   const nomeTrim = nome.trim();
-  const listKey = tipo === 'receita' ? 'categoriasReceita' : 'categoriasDespesa';
-  const base = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  const listKey = tipoLista === 'receita' ? 'categoriasReceita' : 'categoriasDespesa';
+  const base = tipoLista === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
   if(!data[listKey]) data[listKey] = [];
   if(base.includes(nomeTrim) || data[listKey].includes(nomeTrim)){
     alert('Essa categoria já existe.');
@@ -460,7 +517,7 @@ function adicionarCategoria(){
 
 function updateFormFieldsVisibility(tipo){
   const map = {
-    fieldCategoria: tipo === 'receita' || tipo === 'despesa',
+    fieldCategoria: tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao',
     fieldCartaoNome: tipo === 'cartao',
     fieldLimite: tipo === 'cartao',
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
@@ -470,7 +527,7 @@ function updateFormFieldsVisibility(tipo){
   Object.keys(map).forEach(id => {
     document.getElementById(id).style.display = map[id] ? 'flex' : 'none';
   });
-  if(tipo === 'receita' || tipo === 'despesa') populateCategoriaSelect();
+  if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
 }
 
 function currentMonthKey(){
@@ -489,12 +546,14 @@ function sumByTipo(tipo){
   return data.lancamentos.filter(l => l.tipo === tipo).reduce((s,l) => s + Number(l.valor), 0);
 }
 
-// Saldo da conta corrente = última atualização manual (checkpoint) + receitas/despesas lançadas depois dela
+// Saldo da conta corrente = TODAS as receitas menos TODAS as despesas lançadas (sem exceção de data),
+// mais um ajuste de base opcional (botão "Ajustar saldo base", usado só para corrigir o saldo quando necessário).
+// Lançamentos do tipo Cartão de Crédito NÃO entram aqui — só acompanham a fatura. Quando a fatura é paga,
+// lance como Despesa (categoria "Cartão de Crédito") e aí sim desconta do saldo, normalmente.
 function calcularSaldoContaCorrente(){
   const baseline = latestByTipo('conta');
   const baselineValor = baseline ? Number(baseline.valor) : 0;
-  const baselineData = baseline ? baseline.data : null;
-  const movimentos = data.lancamentos.filter(l => (l.tipo === 'receita' || l.tipo === 'despesa') && (!baselineData || l.data > baselineData));
+  const movimentos = data.lancamentos.filter(l => l.tipo === 'receita' || l.tipo === 'despesa');
   const somaMovimentos = movimentos.reduce((s,l) => s + (l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor)), 0);
   return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
 }
@@ -520,6 +579,93 @@ function cartoesAgrupados(){
   }).sort((a,b) => a.nome.localeCompare(b.nome));
 }
 
+// ---------- Orçamento do Mês ----------
+function getOrcamentoMes(monthKey){
+  if(!data.orcamentos) data.orcamentos = {};
+  if(!data.orcamentos[monthKey]) data.orcamentos[monthKey] = { total: 0, categorias: {} };
+  if(!data.orcamentos[monthKey].categorias) data.orcamentos[monthKey].categorias = {};
+  return data.orcamentos[monthKey];
+}
+
+function gastoPorCategoriaNoMes(monthKey){
+  const itens = data.lancamentos.filter(l => (l.tipo === 'despesa' || l.tipo === 'cartao') && itemInMonth(l, monthKey));
+  const porCat = {};
+  itens.forEach(l => {
+    const cat = l.categoria || 'Outros';
+    porCat[cat] = (porCat[cat] || 0) + Number(l.valor);
+  });
+  return porCat;
+}
+
+function salvarOrcamentoTotal(valor){
+  const monthKey = currentMonthKey();
+  const orc = getOrcamentoMes(monthKey);
+  orc.total = valor || 0;
+  saveData();
+  renderOrcamento();
+}
+
+function salvarOrcamentoCategoria(categoria, valor){
+  const monthKey = currentMonthKey();
+  const orc = getOrcamentoMes(monthKey);
+  orc.categorias[categoria] = valor || 0;
+  saveData();
+  renderOrcamento();
+}
+
+function corBarraOrcamento(pct){
+  if(pct >= 100) return 'var(--red)';
+  if(pct >= 80) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function abrirOrcamento(){
+  document.getElementById('orcamentoModal').style.display = 'flex';
+  renderOrcamento();
+}
+function fecharOrcamento(){
+  document.getElementById('orcamentoModal').style.display = 'none';
+}
+
+function renderOrcamento(){
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  const orc = getOrcamentoMes(monthKey);
+  const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
+  const gastoTotal = Object.values(gastoPorCat).reduce((s,v)=>s+v,0);
+
+  document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
+  document.getElementById('orcamentoTotalInput').value = orc.total || '';
+  const pctTotal = orc.total ? Math.min(100, (gastoTotal / orc.total) * 100) : 0;
+  document.getElementById('orcamentoTotalGasto').textContent = fmt(gastoTotal);
+  document.getElementById('orcamentoTotalRestante').textContent = fmt(Math.max(0, (orc.total || 0) - gastoTotal));
+  const barTotal = document.getElementById('orcamentoTotalBar');
+  barTotal.style.width = pctTotal + '%';
+  barTotal.style.background = corBarraOrcamento(pctTotal);
+
+  const todasCategorias = [...new Set(CATEGORIAS_DESPESA.concat(data.categoriasDespesa||[]).concat(Object.keys(gastoPorCat)))];
+  const list = document.getElementById('orcamentoCategoriasList');
+  list.innerHTML = todasCategorias.map(cat => {
+    const limite = orc.categorias[cat] || 0;
+    const gasto = gastoPorCat[cat] || 0;
+    const pct = limite ? Math.min(100, (gasto / limite) * 100) : 0;
+    const catEscaped = cat.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `
+      <div class="orc-cat-row">
+        <div class="linha1">
+          <span>${cat}</span>
+          <input type="number" step="0.01" min="0" value="${limite || ''}" placeholder="0,00" onchange="salvarOrcamentoCategoria('${catEscaped}', parseFloat(this.value)||0)">
+        </div>
+        <div class="orc-bar-wrap"><div class="orc-bar" style="width:${pct}%; background:${corBarraOrcamento(pct)};"></div></div>
+        <div class="hint" style="display:flex; justify-content:space-between; margin-top:2px;">
+          <span>Gasto ${fmt(gasto)}</span>
+          <span>${limite ? pct.toFixed(0) + '%' : ''}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderAll(){
   renderSummary();
   renderTable();
@@ -528,6 +674,7 @@ function renderAll(){
   renderInvestimentos();
   renderContaPanel();
   renderCartoesPanel();
+  if(document.getElementById('orcamentoModal').style.display === 'flex') renderOrcamento();
   if(razaoAtualKey) renderRazaoContent();
 }
 
@@ -564,6 +711,7 @@ function detalheFor(item){
   if(item.tipo === 'receita' || item.tipo === 'despesa') return item.categoria || '-';
   if(item.tipo === 'cartao'){
     const partes = [item.nome || 'Cartão'];
+    if(item.categoria) partes.push(item.categoria);
     if(item.limite) partes.push('Limite ' + fmt(item.limite));
     if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
     return partes.join(' • ');
@@ -581,7 +729,11 @@ function detalheFor(item){
 
 function linhaLancamentoHtml(item){
   const tag = TAG_INFO[item.tipo] || {label:item.tipo, cls:''};
-  const corValor = (item.tipo === 'receita' || item.tipo === 'investimento') ? 'pos' : (item.tipo === 'despesa' || item.tipo === 'divida') ? 'neg' : 'info';
+  const corValor = (item.tipo === 'receita' || item.tipo === 'investimento')
+    ? 'pos'
+    : (item.tipo === 'despesa' || item.tipo === 'divida')
+      ? 'neg'
+      : 'info';
   let acoesExtra = '';
   if(item.tipo === 'divida' && Number(item.parcelas) > 0){
     acoesExtra = `<button class="baixa" onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
@@ -630,7 +782,7 @@ function editLancamento(id){
   document.getElementById('lancData').value = item.data;
   document.getElementById('lancTipo').value = item.tipo;
   updateFormFieldsVisibility(item.tipo);
-  if(item.tipo === 'receita' || item.tipo === 'despesa'){
+  if(item.tipo === 'receita' || item.tipo === 'despesa' || item.tipo === 'cartao'){
     document.getElementById('lancCategoria').value = item.categoria || '';
   }
   document.getElementById('lancValor').value = item.valor;
@@ -709,7 +861,7 @@ function getRazaoConfig(key){
   if(key === 'conta'){
     const calc = calcularSaldoContaCorrente();
     itens = calc.baseline ? [calc.baseline].concat(calc.movimentos) : calc.movimentos;
-    titulo = 'Razão — Conta Corrente (saldo base + movimentações)';
+    titulo = 'Razão — Conta Corrente (saldo base + receitas/despesas)';
     total = calc.saldo;
     totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
@@ -745,8 +897,8 @@ function getRazaoConfig(key){
 
 function abrirRazao(key){
   razaoAtualKey = key;
-  renderRazaoContent();
   document.getElementById('razaoModal').style.display = 'flex';
+  renderRazaoContent();
 }
 function fecharRazao(){
   document.getElementById('razaoModal').style.display = 'none';
@@ -765,14 +917,14 @@ function renderRazaoContent(){
   document.getElementById('razaoTotalLabel').textContent = cfg.totalLabel;
   document.getElementById('razaoTotal').textContent = fmt(cfg.total);
 
-  // Resumo discriminado por cartão, só aparece na razão da Fatura Cartão
   const resumoEl = document.getElementById('razaoResumoCartoes');
+  const chartContainer = document.getElementById('razaoChartContainer');
   if(razaoAtualKey === 'cartao'){
     const cartoes = cartoesAgrupados();
     if(cartoes.length === 0){
       resumoEl.innerHTML = '';
     } else {
-      resumoEl.innerHTML = '<div class="totals-line" style="border-top:none; margin-top:0; padding-top:0; display:block;">' +
+      resumoEl.innerHTML = '<div style="margin-bottom:10px;">' +
         cartoes.map(c => `
           <div class="list-item">
             <div>${c.nome} <span class="hint">(${c.qtdLancamentos} lançamento${c.qtdLancamentos>1?'s':''})</span></div>
@@ -780,9 +932,52 @@ function renderRazaoContent(){
           </div>
         `).join('') + '</div>';
     }
+    chartContainer.style.display = 'block';
+    renderChartRazaoCartaoCategorias();
   } else {
     resumoEl.innerHTML = '';
+    chartContainer.style.display = 'none';
   }
+}
+
+function renderChartRazaoCartaoCategorias(){
+  const itens = data.lancamentos.filter(l => l.tipo === 'cartao');
+  const porCategoria = {};
+  itens.forEach(l => {
+    const cat = l.categoria || 'Sem categoria';
+    porCategoria[cat] = (porCategoria[cat] || 0) + Number(l.valor);
+  });
+  const labels = Object.keys(porCategoria);
+  const values = Object.values(porCategoria);
+  if(charts.razaoCartaoCat) charts.razaoCartaoCat.destroy();
+  const ctx = document.getElementById('chartRazaoCategoria').getContext('2d');
+  charts.razaoCartaoCat = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length ? labels : ['Sem lançamentos de cartão'],
+      datasets: [{
+        data: values.length ? values : [1],
+        backgroundColor: labels.length ? CORES : ['#334155'],
+        borderColor: '#1e293b',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{color:'#e2e8f0', boxWidth:12, font:{size:11}} },
+        tooltip:{
+          callbacks:{
+            label:function(ctx){
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = total ? ((ctx.raw/total)*100).toFixed(1) : 0;
+              return `${ctx.label}: ${fmt(ctx.raw)} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 function renderCharts(){
@@ -943,9 +1138,9 @@ function renderContaPanel(){
   const calc = calcularSaldoContaCorrente();
   document.getElementById('contaSaldoDisplay').textContent = fmt(calc.saldo);
   if(calc.baseline){
-    document.getElementById('contaDataDisplay').textContent = 'Base ' + fmt(calc.baseline.valor) + ' em ' + fmtDate(calc.baseline.data) + ' + ' + calc.movimentos.length + ' lançamento(s) depois';
+    document.getElementById('contaDataDisplay').textContent = 'Base ' + fmt(calc.baseline.valor) + ' (ajustada em ' + fmtDate(calc.baseline.data) + ') + todas as receitas/despesas lançadas';
   } else {
-    document.getElementById('contaDataDisplay').textContent = 'Nenhum ajuste de saldo base ainda — calculado só com receitas/despesas lançadas';
+    document.getElementById('contaDataDisplay').textContent = 'Soma de todas as receitas menos todas as despesas lançadas';
   }
 }
 
@@ -992,7 +1187,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     id: editingId || uid(),
     data: document.getElementById('lancData').value,
     tipo,
-    categoria: (tipo === 'receita' || tipo === 'despesa') ? document.getElementById('lancCategoria').value : null,
+    categoria: (tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') ? document.getElementById('lancCategoria').value : null,
     valor: parseFloat(document.getElementById('lancValor').value) || 0,
     descricao: document.getElementById('lancDescricao').value.trim(),
     nome: tipo === 'cartao' ? (document.getElementById('lancCartaoNome').value.trim() || 'Cartão') : null,
