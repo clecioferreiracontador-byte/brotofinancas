@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planilha Financeira Micelc</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#162032; --text:#e2e8f0; --muted:#94a3b8;
+    --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308; --purple:#a855f7; --orange:#f97316;
+    --border:#334155;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:linear-gradient(160deg,#0f172a,#111827); color:var(--text); padding:24px;
+  }
+  .header-block{text-align:center; margin-bottom:24px; position:relative;}
+  h1{font-size:1.9rem; margin:0 0 6px 0; letter-spacing:.02em;}
+  .sub{color:var(--muted); font-size:0.9rem;}
+  .user-bar{display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px; font-size:0.8rem; color:var(--muted);}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
+  .card .label{color:var(--muted); font-size:0.78rem; text-transform:uppercase; letter-spacing:.03em;}
+  .card .value{font-size:1.35rem; font-weight:700; margin-top:6px;}
+  .pos{color:var(--green);} .neg{color:var(--red);} .info{color:var(--blue);} .warn{color:var(--yellow);}
+
+  .grid2{display:grid; grid-template-columns:1.1fr 1fr; gap:20px; margin-bottom:24px;}
+  @media (max-width:900px){ .grid2{grid-template-columns:1fr;} }
+
+  .panel{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px;}
+  .panel h2{font-size:1.05rem; margin:0 0 14px 0; display:flex; align-items:center; gap:8px; justify-content:space-between;}
+  .panel h2 .title{display:flex; align-items:center; gap:8px;}
+
+  form.inline{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:14px;}
+  .field{display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--muted);}
+  input, select{
+    background:var(--card2); border:1px solid var(--border); color:var(--text);
+    padding:8px 10px; border-radius:8px; font-size:0.9rem; min-width:110px;
+  }
+  input:focus, select:focus{outline:1px solid var(--blue);}
+  button{
+    background:var(--blue); color:white; border:none; border-radius:8px; padding:9px 16px;
+    font-size:0.88rem; cursor:pointer; font-weight:600;
+  }
+  button.secondary{background:var(--card2); border:1px solid var(--border); color:var(--text);}
+  button.small{padding:5px 10px; font-size:0.76rem; font-weight:600;}
+  button.danger{background:#7f1d1d; color:#fecaca; padding:5px 10px; font-size:0.78rem;}
+  button.edit{background:#1e3a5f; color:#93c5fd; padding:5px 10px; font-size:0.78rem;}
+  button:hover{opacity:0.9;}
+  .hint{font-size:0.72rem; color:var(--muted);}
+
+  table{width:100%; border-collapse:collapse; font-size:0.85rem;}
+  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
+  th{color:var(--muted); font-weight:600; font-size:0.75rem; text-transform:uppercase;}
+  tr:hover{background:rgba(255,255,255,0.02);}
+  .tbl-wrap{max-height:320px; overflow-y:auto;}
+  .tag{padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600; white-space:nowrap;}
+  .tag.receita{background:rgba(34,197,94,0.15); color:var(--green);}
+  .tag.despesa{background:rgba(239,68,68,0.15); color:var(--red);}
+  .tag.cartao{background:rgba(59,130,246,0.15); color:var(--blue);}
+  .tag.divida{background:rgba(249,115,22,0.15); color:var(--orange);}
+  .tag.conta{background:rgba(168,85,247,0.15); color:var(--purple);}
+  .tag.investimento{background:rgba(234,179,8,0.15); color:var(--yellow);}
+  .empty{color:var(--muted); font-size:0.85rem; text-align:center; padding:16px 0;}
+
+  .chart-box{position:relative; height:260px;}
+  .row-gap{margin-bottom:24px;}
+  .list-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.87rem; gap:10px;}
+  .list-item:last-child{border-bottom:none;}
+  .list-item .meta{color:var(--muted); font-size:0.76rem;}
+  .list-item .actions{display:flex; gap:6px; flex-shrink:0;}
+  .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
+  .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
+  .actions-cell{display:flex; gap:6px;}
+
+  #loadingScreen{display:flex; align-items:center; justify-content:center; min-height:60vh; color:var(--muted); font-size:0.95rem;}
+  #loginScreen{display:none; min-height:80vh; align-items:center; justify-content:center;}
+  .login-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:32px; width:100%; max-width:360px;}
+  .login-card h2{text-align:center; margin:0 0 4px 0;}
+  .login-card .sub{text-align:center; margin-bottom:20px;}
+  .login-card .field{margin-bottom:12px;}
+  .login-card input{width:100%;}
+  .login-card button{width:100%; margin-top:6px;}
+  #loginError{color:var(--red); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">Carregando...</div>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h2>Planilha Financeira Micelc</h2>
+    <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
+    <form id="loginForm">
+      <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
+      <div class="field"><label>Senha</label><input type="password" id="loginSenha" required minlength="6"></div>
+      <button type="submit">Entrar</button>
+      <button type="button" class="secondary" id="signupBtn">Criar conta</button>
+    </form>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+
+<div class="header-block">
+  <h1>Planilha Financeira Micelc</h1>
+  <div class="sub">Registre receitas, despesas, cartão de crédito, dívidas, conta corrente e investimentos, tudo em um único lançamento. Sincronizado na nuvem entre seus aparelhos.</div>
+  <div class="user-bar">
+    <span id="userEmailDisplay"></span>
+    <button class="secondary small" id="logoutBtn">Sair</button>
+  </div>
+</div>
+
+<div class="cards" id="summaryCards"></div>
+
+<div class="panel row-gap">
+  <h2><span class="title">➕ Lançamentos</span></h2>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento.</div>
+  <form class="inline" id="lancForm">
+    <div class="field">
+      <label>Data</label>
+      <input type="date" id="lancData" required>
+    </div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="lancTipo">
+        <option value="receita">Receita</option>
+        <option value="despesa">Despesa</option>
+        <option value="cartao">Cartão de Crédito</option>
+        <option value="divida">Dívida</option>
+        <option value="conta">Conta Corrente</option>
+        <option value="investimento">Investimento</option>
+      </select>
+    </div>
+    <div class="field" id="fieldCategoria">
+      <label>Categoria</label>
+      <select id="lancCategoria"></select>
+    </div>
+    <div class="field">
+      <label>Valor (R$)</label>
+      <input type="number" step="0.01" min="0" id="lancValor" placeholder="0,00" required>
+    </div>
+    <div class="field" id="fieldLimite">
+      <label>Limite do cartão (R$)</label>
+      <input type="number" step="0.01" min="0" id="lancLimite" placeholder="0,00">
+    </div>
+    <div class="field" id="fieldVencimento">
+      <label>Vencimento</label>
+      <input type="date" id="lancVencimento">
+    </div>
+    <div class="field" id="fieldParcelas">
+      <label>Parcelas restantes</label>
+      <input type="number" min="1" id="lancParcelas" placeholder="1">
+    </div>
+    <div class="field" id="fieldTipoInvestimento">
+      <label>Tipo de investimento</label>
+      <select id="lancTipoInvestimento">
+        <option>Renda Fixa</option>
+        <option>Renda Variável</option>
+        <option>Fundos</option>
+        <option>Cripto</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div class="field" style="min-width:180px;">
+      <label>Descrição</label>
+      <input type="text" id="lancDescricao" placeholder="opcional">
+    </div>
+    <button type="submit" id="lancSubmitBtn">Adicionar</button>
+    <button type="button" class="secondary" id="lancCancelBtn" style="display:none;">Cancelar edição</button>
+  </form>
+
+  <div class="month-filter">
+    <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a tabela abaixo):</label>
+    <input type="month" id="filtroMes">
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
+      <tbody id="txTableBody"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="txEmpty" style="display:none;">Nenhum lançamento neste mês.</div>
+</div>
+
+<div class="grid2 row-gap">
+  <div class="panel">
+    <h2>📊 Despesas por Categoria (%)</h2>
+    <div class="chart-box"><canvas id="chartCategorias"></canvas></div>
+  </div>
+  <div class="panel">
+    <h2>📈 Receita x Despesa por Mês</h2>
+    <div class="chart-box"><canvas id="chartFluxo"></canvas></div>
+  </div>
+</div>
+
+<div class="panel row-gap">
+  <h2>📉 Evolução do Resultado Acumulado (mês selecionado)</h2>
+  <div class="chart-box"><canvas id="chartSaldo"></canvas></div>
+</div>
+
+<div class="grid2 row-gap">
+  <div class="panel">
+    <h2><span class="title">🏦 Conta Corrente</span><button class="secondary small" onclick="novoLancamento('conta')">+ Atualizar saldo</button></h2>
+    <div class="card" style="margin:0;">
+      <div class="label">Saldo mais recente</div>
+      <div class="value info" id="contaSaldoDisplay">R$ 0,00</div>
+      <div class="hint" id="contaDataDisplay" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="title">💳 Cartão de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Atualizar fatura</button></h2>
+    <div class="card" style="margin:0;">
+      <div class="label">Fatura mais recente</div>
+      <div class="value warn" id="cartaoFaturaDisplay">R$ 0,00</div>
+      <div class="hint" id="cartaoDetalheDisplay" style="margin-top:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid2 row-gap">
+  <div class="panel">
+    <h2><span class="title">📌 Dívidas</span><button class="secondary small" onclick="novoLancamento('divida')">+ Nova dívida</button></h2>
+    <div id="dividasList"></div>
+    <div class="totals-line"><span>Total em dívidas</span><span id="dividasTotal">R$ 0,00</span></div>
+  </div>
+
+  <div class="panel">
+    <h2><span class="title">📈 Investimentos</span><button class="secondary small" onclick="novoLancamento('investimento')">+ Novo investimento</button></h2>
+    <div id="investList"></div>
+    <div class="totals-line"><span>Total investido</span><span id="investTotal">R$ 0,00</span></div>
+  </div>
+</div>
+
+<footer>Dados sincronizados na nuvem (Firebase) com sua conta — acessíveis de qualquer aparelho logando com o mesmo e-mail.</footer>
+
+</div>
+
+<script>
+// ---------- Firebase ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyAJ1PcQ060jbMMRyt1Xk26oEEAKGOX23Io",
+  authDomain: "planilha-financeira-bd3ae.firebaseapp.com",
+  projectId: "planilha-financeira-bd3ae",
+  storageBucket: "planilha-financeira-bd3ae.firebasestorage.app",
+  messagingSenderId: "613906881186",
+  appId: "1:613906881186:web:6f645aab1283d3f82c55fb",
+  measurementId: "G-QKRP3Y464T"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let docRef = null;
+let unsubscribeSnapshot = null;
+const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
+
+function traduzErroFirebase(code){
+  const mapa = {
+    'auth/invalid-email': 'E-mail inválido.',
+    'auth/user-not-found': 'Usuário não encontrado. Verifique o e-mail ou crie uma conta.',
+    'auth/wrong-password': 'Senha incorreta.',
+    'auth/invalid-credential': 'E-mail ou senha incorretos.',
+    'auth/email-already-in-use': 'Esse e-mail já tem uma conta. Tente entrar em vez de criar conta.',
+    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/missing-password': 'Digite uma senha.',
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde um instante e tente novamente.'
+  };
+  return mapa[code] || 'Não foi possível concluir. Tente novamente.';
+}
+
+function showLoading(){
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'none';
+}
+function showLogin(){
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+}
+function showApp(){
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+}
+
+auth.onAuthStateChanged(function(user){
+  if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  if(user){
+    document.getElementById('userEmailDisplay').textContent = user.email;
+    docRef = db.collection('usuarios').doc(user.uid);
+    unsubscribeSnapshot = docRef.onSnapshot(function(snap){
+      if(snap.exists){
+        data = snap.data();
+        if(!data.lancamentos) data.lancamentos = [];
+      } else {
+        let initial = { lancamentos: [] };
+        const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
+        if(localRaw){
+          try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = parsed; }catch(e){}
+        }
+        data = initial;
+        docRef.set(data);
+      }
+      showApp();
+      renderAll();
+    }, function(err){
+      document.getElementById('loginError').textContent = 'Erro ao carregar dados: ' + err.message;
+    });
+  } else {
+    data = { lancamentos: [] };
+    showLogin();
+  }
+});
+
+document.getElementById('loginForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  document.getElementById('loginError').textContent = '';
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  auth.signInWithEmailAndPassword(email, senha).catch(function(err){
+    document.getElementById('loginError').textContent = traduzErroFirebase(err.code);
+  });
+});
+document.getElementById('signupBtn').addEventListener('click', function(){
+  document.getElementById('loginError').textContent = '';
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  if(!email || senha.length < 6){
+    document.getElementById('loginError').textContent = 'Preencha e-mail e uma senha com pelo menos 6 caracteres.';
+    return;
+  }
+  auth.createUserWithEmailAndPassword(email, senha).catch(function(err){
+    document.getElementById('loginError').textContent = traduzErroFirebase(err.code);
+  });
+});
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  auth.signOut();
+});
+
+// ---------- Dados / App ----------
+const CATEGORIAS_DESPESA = ['Moradia','Alimentação','Transporte','Lazer','Saúde','Educação','Cartão de Crédito','Dívidas','Investimento','Outros'];
+const CATEGORIAS_RECEITA = ['Salário','Freelance','Vendas','Investimentos','Outros'];
+const CORES = ['#3b82f6','#ef4444','#22c55e','#eab308','#a855f7','#f97316','#14b8a6','#ec4899','#6366f1','#84cc16'];
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+let data = { lancamentos: [] };
+let charts = {};
+let editingId = null;
+
+function saveData(){
+  if(docRef) docRef.set(data);
+}
+
+function fmt(v){
+  return (Number(v)||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+function fmtDate(d){
+  return d ? d.split('-').reverse().join('/') : '-';
+}
+
+const TAG_INFO = {
+  receita: {label:'Receita', cls:'receita'},
+  despesa: {label:'Despesa', cls:'despesa'},
+  cartao: {label:'Cartão', cls:'cartao'},
+  divida: {label:'Dívida', cls:'divida'},
+  conta: {label:'Conta Corrente', cls:'conta'},
+  investimento: {label:'Investimento', cls:'investimento'}
+};
+
+function populateCategoriaSelect(){
+  const tipo = document.getElementById('lancTipo').value;
+  const sel = document.getElementById('lancCategoria');
+  const lista = tipo === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function updateFormFieldsVisibility(tipo){
+  const map = {
+    fieldCategoria: tipo === 'receita' || tipo === 'despesa',
+    fieldLimite: tipo === 'cartao',
+    fieldVencimento: tipo === 'cartao' || tipo === 'divida',
+    fieldParcelas: tipo === 'divida',
+    fieldTipoInvestimento: tipo === 'investimento'
+  };
+  Object.keys(map).forEach(id => {
+    document.getElementById(id).style.display = map[id] ? 'flex' : 'none';
+  });
+  if(tipo === 'receita' || tipo === 'despesa') populateCategoriaSelect();
+}
+
+function currentMonthKey(){
+  return document.getElementById('filtroMes').value;
+}
+function itemInMonth(item, monthKey){
+  return item.data && item.data.slice(0,7) === monthKey;
+}
+
+function latestByTipo(tipo){
+  const items = data.lancamentos.filter(l => l.tipo === tipo);
+  if(items.length === 0) return null;
+  return items.reduce((a,b) => (b.data >= a.data ? b : a));
+}
+function sumByTipo(tipo){
+  return data.lancamentos.filter(l => l.tipo === tipo).reduce((s,l) => s + Number(l.valor), 0);
+}
+
+function renderAll(){
+  renderSummary();
+  renderTable();
+  renderCharts();
+  renderDividas();
+  renderInvestimentos();
+  renderContaCartaoPanels();
+}
+
+function renderSummary(){
+  const monthKey = currentMonthKey();
+  const mesItems = data.lancamentos.filter(l => itemInMonth(l, monthKey));
+  const receitaMes = mesItems.filter(l=>l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
+  const despesaMes = mesItems.filter(l=>l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
+  const resultado = receitaMes - despesaMes;
+  const contaAtual = latestByTipo('conta');
+  const cartaoAtual = latestByTipo('cartao');
+  const totalDividas = sumByTipo('divida');
+  const totalInvest = sumByTipo('investimento');
+
+  const cards = [
+    {label:'Saldo Conta Corrente', value: fmt(contaAtual ? contaAtual.valor : 0), cls:'info'},
+    {label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
+    {label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
+    {label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
+    {label:'Fatura Cartão', value: fmt(cartaoAtual ? cartaoAtual.valor : 0), cls:'warn'},
+    {label:'Total Investido', value: fmt(totalInvest), cls:'pos'},
+    {label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
+  ];
+  document.getElementById('summaryCards').innerHTML = cards.map(c => `
+    <div class="card">
+      <div class="label">${c.label}</div>
+      <div class="value ${c.cls}">${c.value}</div>
+    </div>
+  `).join('');
+}
+
+function detalheFor(item){
+  if(item.tipo === 'receita' || item.tipo === 'despesa') return item.categoria || '-';
+  if(item.tipo === 'cartao'){
+    const partes = [];
+    if(item.limite) partes.push('Limite ' + fmt(item.limite));
+    if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
+    return partes.length ? partes.join(' • ') : '-';
+  }
+  if(item.tipo === 'divida'){
+    const partes = [];
+    if(item.parcelas) partes.push(item.parcelas + 'x restantes');
+    if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
+    return partes.length ? partes.join(' • ') : '-';
+  }
+  if(item.tipo === 'investimento') return item.tipoInvestimento || '-';
+  if(item.tipo === 'conta') return 'Atualização de saldo';
+  return '-';
+}
+
+function renderTable(){
+  const monthKey = currentMonthKey();
+  const itens = data.lancamentos.filter(l => itemInMonth(l, monthKey)).sort((a,b)=> b.data.localeCompare(a.data));
+  const body = document.getElementById('txTableBody');
+  const empty = document.getElementById('txEmpty');
+  if(itens.length === 0){
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = itens.map(item => {
+    const tag = TAG_INFO[item.tipo] || {label:item.tipo, cls:''};
+    const corValor = (item.tipo === 'receita' || item.tipo === 'investimento') ? 'pos' : (item.tipo === 'despesa' || item.tipo === 'divida') ? 'neg' : 'info';
+    return `
+    <tr>
+      <td>${fmtDate(item.data)}</td>
+      <td><span class="tag ${tag.cls}">${tag.label}</span></td>
+      <td>${detalheFor(item)}</td>
+      <td>${item.descricao || '-'}</td>
+      <td class="${corValor}">${fmt(item.valor)}</td>
+      <td class="actions-cell">
+        <button class="edit" onclick="editLancamento('${item.id}')">Editar</button>
+        <button class="danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteLancamento(id){
+  data.lancamentos = data.lancamentos.filter(l => l.id !== id);
+  saveData();
+  if(editingId === id) cancelEdit();
+  renderAll();
+}
+
+function editLancamento(id){
+  const item = data.lancamentos.find(l => l.id === id);
+  if(!item) return;
+  editingId = id;
+  document.getElementById('lancData').value = item.data;
+  document.getElementById('lancTipo').value = item.tipo;
+  updateFormFieldsVisibility(item.tipo);
+  if(item.tipo === 'receita' || item.tipo === 'despesa'){
+    document.getElementById('lancCategoria').value = item.categoria || '';
+  }
+  document.getElementById('lancValor').value = item.valor;
+  document.getElementById('lancDescricao').value = item.descricao || '';
+  document.getElementById('lancLimite').value = item.limite || '';
+  document.getElementById('lancVencimento').value = item.vencimento || '';
+  document.getElementById('lancParcelas').value = item.parcelas || '';
+  document.getElementById('lancTipoInvestimento').value = item.tipoInvestimento || 'Renda Fixa';
+  document.getElementById('lancSubmitBtn').textContent = 'Salvar alteração';
+  document.getElementById('lancCancelBtn').style.display = 'inline-block';
+  document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('lancForm').reset();
+  document.getElementById('lancData').value = new Date().toISOString().slice(0,10);
+  document.getElementById('lancTipo').value = 'receita';
+  updateFormFieldsVisibility('receita');
+  document.getElementById('lancSubmitBtn').textContent = 'Adicionar';
+  document.getElementById('lancCancelBtn').style.display = 'none';
+}
+
+function novoLancamento(tipo){
+  cancelEdit();
+  document.getElementById('lancTipo').value = tipo;
+  updateFormFieldsVisibility(tipo);
+  document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(()=>document.getElementById('lancValor').focus(), 300);
+}
+
+function renderCharts(){
+  const monthKey = currentMonthKey();
+  const mesItems = data.lancamentos.filter(l => itemInMonth(l, monthKey));
+
+  const despesasPorCat = {};
+  mesItems.filter(l=>l.tipo==='despesa').forEach(l => {
+    despesasPorCat[l.categoria] = (despesasPorCat[l.categoria]||0) + Number(l.valor);
+  });
+  const catLabels = Object.keys(despesasPorCat);
+  const catValues = Object.values(despesasPorCat);
+
+  if(charts.categorias) charts.categorias.destroy();
+  const ctxCat = document.getElementById('chartCategorias').getContext('2d');
+  charts.categorias = new Chart(ctxCat, {
+    type: 'doughnut',
+    data: {
+      labels: catLabels.length ? catLabels : ['Sem despesas no mês'],
+      datasets: [{
+        data: catValues.length ? catValues : [1],
+        backgroundColor: catLabels.length ? CORES : ['#334155'],
+        borderColor: '#1e293b',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { position:'bottom', labels:{color:'#e2e8f0', boxWidth:12, font:{size:11}} },
+        tooltip: {
+          callbacks: {
+            label: function(ctx){
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = total ? ((ctx.raw/total)*100).toFixed(1) : 0;
+              return `${ctx.label}: ${fmt(ctx.raw)} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const meses = {};
+  data.lancamentos.filter(l=>l.tipo==='receita'||l.tipo==='despesa').forEach(l => {
+    const mk = l.data.slice(0,7);
+    if(!meses[mk]) meses[mk] = {receita:0, despesa:0};
+    meses[mk][l.tipo] += Number(l.valor);
+  });
+  const mesesOrdenados = Object.keys(meses).sort().slice(-6);
+  if(charts.fluxo) charts.fluxo.destroy();
+  const ctxFluxo = document.getElementById('chartFluxo').getContext('2d');
+  charts.fluxo = new Chart(ctxFluxo, {
+    type:'bar',
+    data:{
+      labels: mesesOrdenados.map(m => m.split('-').reverse().join('/')),
+      datasets:[
+        {label:'Receita', data:mesesOrdenados.map(m=>meses[m].receita), backgroundColor:'#22c55e'},
+        {label:'Despesa', data:mesesOrdenados.map(m=>meses[m].despesa), backgroundColor:'#ef4444'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:'#94a3b8'}, grid:{color:'#334155'}},
+        y:{ticks:{color:'#94a3b8'}, grid:{color:'#334155'}}
+      },
+      plugins:{ legend:{labels:{color:'#e2e8f0'}} }
+    }
+  });
+
+  const diasNoMes = {};
+  mesItems.filter(l=>l.tipo==='receita'||l.tipo==='despesa').sort((a,b)=>a.data.localeCompare(b.data)).forEach(l => {
+    const dia = l.data;
+    const delta = l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor);
+    diasNoMes[dia] = (diasNoMes[dia]||0) + delta;
+  });
+  const diasOrdenados = Object.keys(diasNoMes).sort();
+  let acumulado = 0;
+  const acumuladoValores = diasOrdenados.map(d => { acumulado += diasNoMes[d]; return acumulado; });
+
+  if(charts.saldo) charts.saldo.destroy();
+  const ctxSaldo = document.getElementById('chartSaldo').getContext('2d');
+  charts.saldo = new Chart(ctxSaldo, {
+    type:'line',
+    data:{
+      labels: diasOrdenados.map(d => d.split('-').reverse().join('/')),
+      datasets:[{
+        label:'Resultado acumulado',
+        data: acumuladoValores,
+        borderColor:'#3b82f6',
+        backgroundColor:'rgba(59,130,246,0.15)',
+        fill:true, tension:0.25
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:'#94a3b8'}, grid:{color:'#334155'}},
+        y:{ticks:{color:'#94a3b8'}, grid:{color:'#334155'}}
+      },
+      plugins:{ legend:{labels:{color:'#e2e8f0'}} }
+    }
+  });
+}
+
+function renderDividas(){
+  const list = document.getElementById('dividasList');
+  const itens = data.lancamentos.filter(l => l.tipo === 'divida').sort((a,b)=>b.data.localeCompare(a.data));
+  if(itens.length === 0){
+    list.innerHTML = '<div class="empty">Nenhuma dívida cadastrada.</div>';
+  } else {
+    list.innerHTML = itens.map(d => `
+      <div class="list-item">
+        <div>
+          <div>${d.descricao || 'Dívida'}</div>
+          <div class="meta">${d.parcelas ? d.parcelas + 'x restantes • ' : ''}vence ${fmtDate(d.vencimento)}</div>
+        </div>
+        <div class="actions">
+          <span class="neg" style="margin-right:6px;">${fmt(d.valor)}</span>
+          <button class="edit" onclick="editLancamento('${d.id}')">Editar</button>
+          <button class="danger" onclick="deleteLancamento('${d.id}')">x</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('dividasTotal').textContent = fmt(sumByTipo('divida'));
+}
+
+function renderInvestimentos(){
+  const list = document.getElementById('investList');
+  const itens = data.lancamentos.filter(l => l.tipo === 'investimento').sort((a,b)=>b.data.localeCompare(a.data));
+  if(itens.length === 0){
+    list.innerHTML = '<div class="empty">Nenhum investimento cadastrado.</div>';
+  } else {
+    list.innerHTML = itens.map(i => `
+      <div class="list-item">
+        <div>
+          <div>${i.descricao || 'Investimento'}</div>
+          <div class="meta">${i.tipoInvestimento || '-'}</div>
+        </div>
+        <div class="actions">
+          <span class="pos" style="margin-right:6px;">${fmt(i.valor)}</span>
+          <button class="edit" onclick="editLancamento('${i.id}')">Editar</button>
+          <button class="danger" onclick="deleteLancamento('${i.id}')">x</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('investTotal').textContent = fmt(sumByTipo('investimento'));
+}
+
+function renderContaCartaoPanels(){
+  const conta = latestByTipo('conta');
+  document.getElementById('contaSaldoDisplay').textContent = fmt(conta ? conta.valor : 0);
+  document.getElementById('contaDataDisplay').textContent = conta ? 'Atualizado em ' + fmtDate(conta.data) : 'Nenhum lançamento ainda';
+
+  const cartao = latestByTipo('cartao');
+  document.getElementById('cartaoFaturaDisplay').textContent = fmt(cartao ? cartao.valor : 0);
+  if(cartao){
+    const uso = cartao.limite ? ((cartao.valor / cartao.limite) * 100).toFixed(1) : null;
+    const partes = [];
+    if(cartao.limite) partes.push('Limite ' + fmt(cartao.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
+    if(cartao.vencimento) partes.push('Vence ' + fmtDate(cartao.vencimento));
+    document.getElementById('cartaoDetalheDisplay').textContent = partes.length ? partes.join(' • ') : 'Atualizado em ' + fmtDate(cartao.data);
+  } else {
+    document.getElementById('cartaoDetalheDisplay').textContent = 'Nenhum lançamento ainda';
+  }
+}
+
+// Event listeners
+document.getElementById('lancTipo').addEventListener('change', function(){
+  updateFormFieldsVisibility(this.value);
+});
+document.getElementById('lancCancelBtn').addEventListener('click', cancelEdit);
+document.getElementById('filtroMes').addEventListener('change', renderAll);
+
+document.getElementById('lancForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const tipo = document.getElementById('lancTipo').value;
+  const entry = {
+    id: editingId || uid(),
+    data: document.getElementById('lancData').value,
+    tipo,
+    categoria: (tipo === 'receita' || tipo === 'despesa') ? document.getElementById('lancCategoria').value : null,
+    valor: parseFloat(document.getElementById('lancValor').value) || 0,
+    descricao: document.getElementById('lancDescricao').value.trim(),
+    limite: tipo === 'cartao' ? (parseFloat(document.getElementById('lancLimite').value) || 0) : null,
+    vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
+    parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
+    tipoInvestimento: tipo === 'investimento' ? document.getElementById('lancTipoInvestimento').value : null
+  };
+  if(!entry.data || entry.valor <= 0) return;
+
+  if(editingId){
+    const idx = data.lancamentos.findIndex(l => l.id === editingId);
+    if(idx > -1) data.lancamentos[idx] = entry;
+  } else {
+    data.lancamentos.push(entry);
+  }
+  saveData();
+  cancelEdit();
+  renderAll();
+});
+
+// Init (defaults de formulário, independente do login)
+(function init(){
+  const isoDate = new Date().toISOString().slice(0,10);
+  const monthKey = isoDate.slice(0,7);
+  document.getElementById('lancData').value = isoDate;
+  document.getElementById('filtroMes').value = monthKey;
+  updateFormFieldsVisibility('receita');
+})();
+</script>
+</body>
+</html>
