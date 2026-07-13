@@ -133,7 +133,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receitas somam e despesas descontam automaticamente do saldo da conta corrente.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receitas somam e despesas descontam automaticamente do saldo da conta corrente. Lançamentos de cartão com o mesmo nome se somam na fatura daquele cartão.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -236,7 +236,7 @@
   </div>
 
   <div class="panel">
-    <h2><span class="title">💳 Cartões de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Novo cartão</button></h2>
+    <h2><span class="title">💳 Cartões de Crédito</span><button class="secondary small" onclick="novoLancamento('cartao')">+ Novo lançamento</button></h2>
     <div id="cartoesList"></div>
     <div class="totals-line"><span>Fatura total (todos os cartões)</span><span id="cartoesTotal">R$ 0,00</span></div>
   </div>
@@ -266,6 +266,7 @@
       <h3 id="razaoTitle">Razão</h3>
       <button class="secondary small" onclick="fecharRazao()">Fechar</button>
     </div>
+    <div id="razaoResumoCartoes"></div>
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>Data</th><th>Tipo</th><th>Detalhe</th><th>Descrição</th><th>Valor</th><th></th></tr></thead>
@@ -498,14 +499,24 @@ function calcularSaldoContaCorrente(){
   return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
 }
 
-// Cartões: agrupa lançamentos tipo cartao por nome, pega o mais recente de cada
+// Cartões: agrupa lançamentos tipo cartao por nome. Valores com o mesmo nome se somam (cada lançamento é uma compra/lançamento na fatura).
+// Limite e vencimento exibidos vêm do lançamento mais recente daquele cartão.
 function cartoesAgrupados(){
   const itens = data.lancamentos.filter(l => l.tipo === 'cartao');
   const nomes = [...new Set(itens.map(l => l.nome || 'Cartão'))];
   return nomes.map(nome => {
     const doNome = itens.filter(l => (l.nome || 'Cartão') === nome);
-    const latest = doNome.reduce((a,b) => (b.data >= a.data ? b : a));
-    return { nome, latest };
+    const maisRecente = doNome.reduce((a,b) => (b.data >= a.data ? b : a));
+    const total = doNome.reduce((s,l) => s + Number(l.valor), 0);
+    return {
+      nome,
+      total,
+      limite: maisRecente.limite,
+      vencimento: maisRecente.vencimento,
+      dataUltimoLancamento: maisRecente.data,
+      latestId: maisRecente.id,
+      qtdLancamentos: doNome.length
+    };
   }).sort((a,b) => a.nome.localeCompare(b.nome));
 }
 
@@ -528,7 +539,7 @@ function renderSummary(){
   const resultado = receitaMes - despesaMes;
   const saldoConta = calcularSaldoContaCorrente().saldo;
   const cartoes = cartoesAgrupados();
-  const faturaTotal = cartoes.reduce((s,c)=>s+Number(c.latest.valor),0);
+  const faturaTotal = cartoes.reduce((s,c)=>s+Number(c.total),0);
   const totalDividas = sumByTipo('divida');
   const totalInvest = sumByTipo('investimento');
 
@@ -703,8 +714,8 @@ function getRazaoConfig(key){
     totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
     itens = data.lancamentos.filter(l=>l.tipo==='cartao');
-    titulo = 'Razão — Cartões de Crédito (todas as faturas lançadas)';
-    total = cartoesAgrupados().reduce((s,c)=>s+Number(c.latest.valor),0);
+    titulo = 'Razão — Cartões de Crédito (todos os lançamentos)';
+    total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
     totalLabel = 'Fatura total (todos os cartões)';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
@@ -753,6 +764,25 @@ function renderRazaoContent(){
   }
   document.getElementById('razaoTotalLabel').textContent = cfg.totalLabel;
   document.getElementById('razaoTotal').textContent = fmt(cfg.total);
+
+  // Resumo discriminado por cartão, só aparece na razão da Fatura Cartão
+  const resumoEl = document.getElementById('razaoResumoCartoes');
+  if(razaoAtualKey === 'cartao'){
+    const cartoes = cartoesAgrupados();
+    if(cartoes.length === 0){
+      resumoEl.innerHTML = '';
+    } else {
+      resumoEl.innerHTML = '<div class="totals-line" style="border-top:none; margin-top:0; padding-top:0; display:block;">' +
+        cartoes.map(c => `
+          <div class="list-item">
+            <div>${c.nome} <span class="hint">(${c.qtdLancamentos} lançamento${c.qtdLancamentos>1?'s':''})</span></div>
+            <span class="warn">${fmt(c.total)}</span>
+          </div>
+        `).join('') + '</div>';
+    }
+  } else {
+    resumoEl.innerHTML = '';
+  }
 }
 
 function renderCharts(){
@@ -926,25 +956,25 @@ function renderCartoesPanel(){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
     list.innerHTML = cartoes.map(c => {
-      const uso = c.latest.limite ? ((c.latest.valor / c.latest.limite) * 100).toFixed(1) : null;
-      const metaPartes = [];
-      if(c.latest.limite) metaPartes.push('Limite ' + fmt(c.latest.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
-      if(c.latest.vencimento) metaPartes.push('Vence ' + fmtDate(c.latest.vencimento));
+      const uso = c.limite ? ((c.total / c.limite) * 100).toFixed(1) : null;
+      const metaPartes = [c.qtdLancamentos + ' lançamento' + (c.qtdLancamentos>1?'s':'')];
+      if(c.limite) metaPartes.push('Limite ' + fmt(c.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
+      if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
       return `
       <div class="list-item">
         <div>
           <div>${c.nome}</div>
-          <div class="meta">${metaPartes.length ? metaPartes.join(' • ') : 'Atualizado em ' + fmtDate(c.latest.data)}</div>
+          <div class="meta">${metaPartes.join(' • ')}</div>
         </div>
         <div class="actions">
-          <span class="warn" style="margin-right:6px;">${fmt(c.latest.valor)}</span>
-          <button class="edit" onclick="editLancamento('${c.latest.id}')">Editar</button>
+          <span class="warn" style="margin-right:6px;">${fmt(c.total)}</span>
+          <button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>
         </div>
       </div>
     `;
     }).join('');
   }
-  const total = cartoes.reduce((s,c)=>s+Number(c.latest.valor),0);
+  const total = cartoes.reduce((s,c)=>s+Number(c.total),0);
   document.getElementById('cartoesTotal').textContent = fmt(total);
 }
 
