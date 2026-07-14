@@ -127,6 +127,9 @@
   .orc-cat-row{margin-bottom:12px; font-size:0.8rem;}
   .orc-cat-row .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;}
   .orc-cat-row .linha1 input{width:82px; padding:4px 6px; font-size:0.75rem; min-width:0;}
+
+  .fluxo-saldo-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;}
+  .fluxo-saldo-box .value{font-size:1.4rem;}
 </style>
 </head>
 <body>
@@ -235,7 +238,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, "Provisões" para já deixar planejadas receitas/despesas dos próximos meses, e "Fluxo de Caixa" para ver a projeção do saldo somando tudo isso.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -338,6 +341,7 @@
       <div class="value info" id="contaSaldoDisplay">R$ 0,00</div>
       <div class="hint" id="contaDataDisplay" style="margin-top:6px;"></div>
     </div>
+    <div class="chart-box" style="height:160px; margin-top:14px;"><canvas id="chartFluxoProjetadoInline"></canvas></div>
   </div>
 
   <div class="panel">
@@ -535,6 +539,13 @@ function nextMonthKeyFromToday(){
   return `${y}-${String(m).padStart(2,'0')}`;
 }
 
+function addOneMonthToKey(monthKey){
+  const partes = monthKey.split('-').map(Number);
+  let y = partes[0], m = partes[1] + 1;
+  if(m > 12){ m = 1; y += 1; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+
 let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
 let charts = {};
 let editingId = null;
@@ -549,6 +560,9 @@ function fmt(v){
 }
 function fmtDate(d){
   return d ? d.split('-').reverse().join('/') : '-';
+}
+function fmtMonthKey(mk){
+  return mk ? mk.split('-').reverse().join('/') : '-';
 }
 
 const TAG_INFO = {
@@ -828,6 +842,7 @@ function excluirProvisao(id){
   data.provisoes = (data.provisoes||[]).filter(p => p.id !== id);
   saveData();
   renderProvisoes();
+  renderFluxoCaixa();
 }
 
 function lancarProvisaoAgora(id){
@@ -870,7 +885,75 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   document.getElementById('provisaoValor').value = '';
   document.getElementById('provisaoDescricao').value = '';
   renderProvisoes();
+  renderFluxoCaixa();
 });
+
+// ---------- Fluxo de Caixa Projetado (lançamentos do mês + provisões futuras) ----------
+function getMesesProjetados(){
+  const hoje = new Date().toISOString().slice(0,7);
+  const mesesComProvisao = [...new Set((data.provisoes||[]).map(p=>p.mes))].filter(m => m >= hoje);
+  const meses = [...new Set([hoje].concat(mesesComProvisao))].sort();
+  return meses;
+}
+
+function calcularFluxoProjetado(){
+  const saldoAtual = calcularSaldoContaCorrente().saldo;
+  const meses = getMesesProjetados();
+  let acumulado = saldoAtual;
+  const linhas = [];
+  meses.forEach(mes => {
+    const provDoMes = (data.provisoes||[]).filter(p => p.mes === mes)
+      .sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1));
+    if(provDoMes.length === 0){
+      linhas.push({ mes, tipo:null, categoria:'-', descricao: (mes === meses[0] ? 'Sem provisões neste mês' : 'Sem provisões cadastradas'), valor:null, saldoAcumulado: acumulado });
+    } else {
+      provDoMes.forEach(p => {
+        acumulado += (p.tipo === 'receita' ? Number(p.valor) : -Number(p.valor));
+        linhas.push({ mes, tipo:p.tipo, categoria:p.categoria, descricao:p.descricao || '-', valor:p.valor, saldoAcumulado: acumulado });
+      });
+    }
+  });
+  return { saldoAtual, linhas, meses };
+}
+
+function renderFluxoCaixa(){
+  const calc = calcularFluxoProjetado();
+
+  // Gráfico: saldo projetado ao final de cada mês (conta corrente + provisões futuras)
+  const porMes = {};
+  calc.linhas.forEach(l => { porMes[l.mes] = l.saldoAcumulado; });
+  const mesesOrdenados = calc.meses;
+  const valores = mesesOrdenados.map(m => porMes[m] !== undefined ? porMes[m] : calc.saldoAtual);
+
+  const canvas = document.getElementById('chartFluxoProjetadoInline');
+  if(!canvas) return;
+  if(charts.fluxoProjetado) charts.fluxoProjetado.destroy();
+  const ctx = canvas.getContext('2d');
+  charts.fluxoProjetado = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: mesesOrdenados.map(fmtMonthKey),
+      datasets: [{
+        label: 'Saldo projetado (com provisões)',
+        data: valores,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.15)',
+        fill: true, tension: 0.25, pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#94a3b8', font:{size:10} }, grid: { color: '#334155' } },
+        y: { ticks: { color: '#94a3b8', font:{size:10} }, grid: { color: '#334155' } }
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: { callbacks: { label: function(ctx){ return fmt(ctx.raw); } } }
+      }
+    }
+  });
+}
 
 function renderAll(){
   renderSummary();
@@ -880,6 +963,7 @@ function renderAll(){
   renderInvestimentos();
   renderContaPanel();
   renderCartoesPanel();
+  renderFluxoCaixa();
   if(document.getElementById('orcamentoModal').style.display === 'flex') renderOrcamento();
   if(razaoAtualKey) renderRazaoContent();
 }
