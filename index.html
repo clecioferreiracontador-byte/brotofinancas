@@ -250,7 +250,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes).</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo) — quando pagar, lance como Despesa na categoria "Cartão de Crédito". Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -276,6 +276,7 @@
       <div style="display:flex; gap:6px;">
         <select id="lancCategoria" style="flex:1;"></select>
         <button type="button" class="secondary iconbtn" onclick="adicionarCategoria()" title="Nova categoria">+</button>
+        <button type="button" class="secondary iconbtn" onclick="excluirCategoria()" title="Excluir categoria selecionada">−</button>
       </div>
     </div>
     <div class="field">
@@ -653,6 +654,34 @@ function adicionarCategoria(){
   saveData();
   populateCategoriaSelect();
   document.getElementById('lancCategoria').value = nomeTrim;
+}
+
+function excluirCategoria(){
+  const tipo = document.getElementById('lancTipo').value;
+  if(tipo !== 'receita' && tipo !== 'despesa' && tipo !== 'cartao'){
+    alert('Selecione o tipo Receita, Despesa ou Cartão antes de excluir uma categoria.');
+    return;
+  }
+  const tipoLista = tipo === 'receita' ? 'receita' : 'despesa';
+  const categoriaAtual = document.getElementById('lancCategoria').value;
+  if(!categoriaAtual){
+    alert('Selecione uma categoria para excluir.');
+    return;
+  }
+  const base = tipoLista === 'receita' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA;
+  if(base.includes(categoriaAtual)){
+    alert('Essa é uma categoria padrão do sistema e não pode ser excluída.');
+    return;
+  }
+  const listKey = tipoLista === 'receita' ? 'categoriasReceita' : 'categoriasDespesa';
+  if(!data[listKey] || !data[listKey].includes(categoriaAtual)){
+    alert('Selecione uma categoria personalizada para excluir.');
+    return;
+  }
+  if(!confirm('Excluir a categoria "' + categoriaAtual + '"? Lançamentos já registrados nela continuam existindo, mas ela deixa de aparecer na lista.')) return;
+  data[listKey] = data[listKey].filter(c => c !== categoriaAtual);
+  saveData();
+  populateCategoriaSelect();
 }
 
 function updateFormFieldsVisibility(tipo){
