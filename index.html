@@ -129,6 +129,10 @@
   .orc-cat-row{margin-bottom:12px; font-size:0.8rem;}
   .orc-cat-row .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;}
   .orc-cat-row .linha1 input{width:82px; padding:4px 6px; font-size:0.75rem; min-width:0;}
+
+  .meta-invest-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;}
+  .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
+  .meta-invest-box .linha2{display:flex; justify-content:space-between; margin-top:6px; font-size:0.76rem; color:var(--muted);}
 </style>
 </head>
 <body>
@@ -208,6 +212,11 @@
         <label>Descrição</label>
         <input type="text" id="provisaoDescricao" placeholder="opcional">
       </div>
+      <div class="field">
+        <label>Dia de vencimento</label>
+        <input type="date" id="provisaoVencimento">
+        <span class="hint">dentro do mês escolhido acima</span>
+      </div>
       <div class="field" style="flex-direction:row; align-items:center; gap:6px; min-width:auto;">
         <input type="checkbox" id="provisaoRepete" style="min-width:auto; width:16px; height:16px;" onchange="toggleProvisaoRepeteField()">
         <label for="provisaoRepete" style="margin:0;">Se repete</label>
@@ -223,7 +232,7 @@
       </div>
       <button type="submit">Adicionar</button>
     </form>
-    <div class="hint" style="margin-bottom:10px;">Marque "Se repete" para casos como salário, despesas fixas ou parcelas fixas: a provisão é criada automaticamente todo mês. Para Despesa na categoria "Cartão de Crédito", em vez do mês final você informa o número de parcelas e o sistema calcula sozinho até qual mês vai a última.</div>
+    <div class="hint" style="margin-bottom:10px;">Marque "Se repete" para casos como salário, despesas fixas ou parcelas fixas: a provisão é criada automaticamente todo mês (mantendo o mesmo dia de vencimento). Para Despesa na categoria "Cartão de Crédito", em vez do mês final você informa o número de parcelas e o sistema calcula sozinho até qual mês vai a última.</div>
     <div class="totals-line" style="margin-top:14px;">
       <span>Receita prevista</span><span class="pos" id="provisaoTotalReceita">R$ 0,00</span>
     </div>
@@ -252,7 +261,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -307,6 +316,14 @@
         <option>Cripto</option>
         <option>Outro</option>
       </select>
+    </div>
+    <div class="field" id="fieldMetaInvestimento">
+      <label>Meta (opcional)</label>
+      <div style="display:flex; gap:6px;">
+        <select id="lancMetaInvestimento" style="flex:1;"></select>
+        <button type="button" class="secondary iconbtn" onclick="adicionarMetaInvestimento()" title="Nova meta">+</button>
+        <button type="button" class="secondary iconbtn" onclick="excluirMetaInvestimentoSelecionada()" title="Excluir meta selecionada">−</button>
+      </div>
     </div>
     <div class="field" style="min-width:180px;">
       <label>Descrição</label>
@@ -376,6 +393,7 @@
 
   <div class="panel">
     <h2><span class="title">📈 Investimentos</span><button class="secondary small" onclick="novoLancamento('investimento')">+ Novo investimento</button></h2>
+    <div id="metasInvestimentoList"></div>
     <div id="investList"></div>
     <div class="totals-line"><span>Total investido</span><span id="investTotal" class="blur-target">R$ 0,00</span></div>
   </div>
@@ -491,8 +509,9 @@ auth.onAuthStateChanged(function(user){
         if(!data.categoriasDespesa) data.categoriasDespesa = [];
         if(!data.orcamentos) data.orcamentos = {};
         if(!data.provisoes) data.provisoes = [];
+        if(!data.metasInvestimento) data.metasInvestimento = [];
       } else {
-        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
+        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
         if(localRaw){
           try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
@@ -506,7 +525,7 @@ auth.onAuthStateChanged(function(user){
       document.getElementById('loginError').textContent = 'Erro ao carregar dados: ' + err.message;
     });
   } else {
-    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
+    data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
     showLogin();
   }
 });
@@ -597,7 +616,17 @@ function gerarMesesQtd(de, qtd){
   return meses;
 }
 
-let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [] };
+// Gera uma data de vencimento para cada mês da lista, mantendo o mesmo dia (com
+// ajuste automático de fim de mês), a partir de uma data-base YYYY-MM-DD.
+function gerarVencimentosParaMeses(meses, vencimentoBase){
+  const vencimentos = [vencimentoBase];
+  for(let i = 1; i < meses.length; i++){
+    vencimentos.push(addOneMonth(vencimentos[i - 1]));
+  }
+  return vencimentos;
+}
+
+let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
 let charts = {};
 let editingId = null;
 let razaoAtualKey = null;
@@ -697,6 +726,70 @@ function excluirCategoria(){
   populateCategoriaSelect();
 }
 
+// ---------- Metas de Investimento (ex: "Viagem" R$ 30.000,00) ----------
+function populateMetaInvestimentoSelect(){
+  const sel = document.getElementById('lancMetaInvestimento');
+  const valorAtual = sel.value;
+  const metas = data.metasInvestimento || [];
+  sel.innerHTML = '<option value="">Sem meta específica</option>' +
+    metas.map(m => `<option value="${m.nome}">${m.nome} (meta ${fmt(m.valorMeta)})</option>`).join('');
+  if(metas.some(m => m.nome === valorAtual)) sel.value = valorAtual;
+}
+
+function adicionarMetaInvestimento(){
+  const nome = prompt('Nome da meta (ex: Viagem, Reserva de emergência, Carro novo):');
+  if(!nome || !nome.trim()) return;
+  const nomeTrim = nome.trim();
+  if(!data.metasInvestimento) data.metasInvestimento = [];
+  if(data.metasInvestimento.some(m => m.nome === nomeTrim)){
+    alert('Já existe uma meta com esse nome.');
+    return;
+  }
+  const valorTexto = prompt('Valor da meta "' + nomeTrim + '" (R$):', '0');
+  if(valorTexto === null) return;
+  const valorMeta = parseFloat(String(valorTexto).replace(',', '.')) || 0;
+  if(valorMeta <= 0){
+    alert('Informe um valor de meta maior que zero.');
+    return;
+  }
+  data.metasInvestimento.push({ id: uid(), nome: nomeTrim, valorMeta });
+  saveData();
+  populateMetaInvestimentoSelect();
+  document.getElementById('lancMetaInvestimento').value = nomeTrim;
+  renderInvestimentos();
+}
+
+function excluirMetaInvestimentoSelecionada(){
+  const sel = document.getElementById('lancMetaInvestimento');
+  const nomeAtual = sel.value;
+  if(!nomeAtual){
+    alert('Selecione uma meta para excluir.');
+    return;
+  }
+  const meta = (data.metasInvestimento || []).find(m => m.nome === nomeAtual);
+  if(!meta) return;
+  excluirMetaInvestimentoPorId(meta.id);
+}
+
+function excluirMetaInvestimentoPorId(id){
+  const meta = (data.metasInvestimento || []).find(m => m.id === id);
+  if(!meta) return;
+  if(!confirm('Excluir a meta "' + meta.nome + '"? Os investimentos já lançados continuam existindo, só deixam de contar para essa meta.')) return;
+  data.metasInvestimento = data.metasInvestimento.filter(m => m.id !== id);
+  saveData();
+  populateMetaInvestimentoSelect();
+  renderInvestimentos();
+}
+
+function metasInvestimentoAgrupadas(){
+  const metas = data.metasInvestimento || [];
+  return metas.map(m => {
+    const valorAtual = data.lancamentos.filter(l => l.tipo === 'investimento' && l.meta === m.nome).reduce((s,l)=>s+Number(l.valor),0);
+    const pct = m.valorMeta ? Math.min(100, (valorAtual / m.valorMeta) * 100) : 0;
+    return { ...m, valorAtual, pct, atingida: m.valorMeta > 0 && valorAtual >= m.valorMeta };
+  });
+}
+
 // O campo "Nome do cartão" aparece tanto para lançamentos tipo Cartão de Crédito (compras)
 // quanto para Despesa na categoria "Cartão de Crédito" (pagamento de fatura) — nesse segundo
 // caso é ele que permite abater o valor pago do saldo em aberto daquele cartão.
@@ -713,7 +806,8 @@ function updateFormFieldsVisibility(tipo){
     fieldLimite: tipo === 'cartao',
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
     fieldParcelas: tipo === 'divida',
-    fieldTipoInvestimento: tipo === 'investimento'
+    fieldTipoInvestimento: tipo === 'investimento',
+    fieldMetaInvestimento: tipo === 'investimento'
   };
   Object.keys(map).forEach(id => {
     document.getElementById(id).style.display = map[id] ? 'flex' : 'none';
@@ -722,6 +816,7 @@ function updateFormFieldsVisibility(tipo){
     ? 'Nome do cartão'
     : 'Cartão que está pagando';
   if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
+  if(tipo === 'investimento') populateMetaInvestimentoSelect();
 }
 
 function currentMonthKey(){
@@ -915,17 +1010,36 @@ function renderOrcamento(){
   }).join('');
 }
 
-// ---------- Provisões (receitas/despesas futuras, com opção de recorrência) ----------
+// ---------- Provisões (receitas/despesas futuras, com vencimento e opção de recorrência) ----------
 function abrirProvisoes(){
   document.getElementById('provisoesModal').style.display = 'flex';
   if(!document.getElementById('provisaoMesInput').value){
     document.getElementById('provisaoMesInput').value = nextMonthKeyFromToday();
   }
   populateProvisaoCategoriaSelect();
+  atualizarLimitesVencimentoProvisao();
   renderProvisoes();
 }
 function fecharProvisoes(){
   document.getElementById('provisoesModal').style.display = 'none';
+}
+
+// Mantém o campo "Dia de vencimento" restrito aos dias do mês selecionado acima (ex: agosto 01 a 31).
+function atualizarLimitesVencimentoProvisao(){
+  const mes = document.getElementById('provisaoMesInput').value;
+  const input = document.getElementById('provisaoVencimento');
+  if(!mes){
+    input.removeAttribute('min');
+    input.removeAttribute('max');
+    return;
+  }
+  const partes = mes.split('-').map(Number);
+  const lastDay = new Date(partes[0], partes[1], 0).getDate();
+  const min = mes + '-01';
+  const max = mes + '-' + String(lastDay).padStart(2,'0');
+  input.min = min;
+  input.max = max;
+  if(input.value && (input.value < min || input.value > max)) input.value = '';
 }
 
 function isProvisaoCartaoCredito(){
@@ -981,17 +1095,21 @@ function renderProvisoes(){
     list.innerHTML = '<div class="empty">Nenhuma provisão para este mês.</div>';
     return;
   }
-  const ordenados = itens.slice().sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1));
+  const ordenados = itens.slice().sort((a,b) => {
+    if(a.vencimento && b.vencimento) return a.vencimento.localeCompare(b.vencimento);
+    return a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1);
+  });
   list.innerHTML = ordenados.map(p => {
     const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : {label:'Despesa', cls:'despesa'};
     const cor = p.tipo === 'receita' ? 'pos' : 'neg';
     const recorrenteTag = p.recorrenciaId ? '<span class="recorrente-tag">🔁 Recorrente</span>' : '';
     const btnExcluirSerie = p.recorrenciaId ? `<button class="danger" onclick="excluirSerieProvisao('${p.recorrenciaId}')">Excluir série</button>` : '';
+    const vencimentoTxt = p.vencimento ? (' • Vence ' + fmtDate(p.vencimento)) : '';
     return `
       <div class="list-item">
         <div>
           <div><span class="tag ${tag.cls}">${tag.label}</span> ${p.categoria} ${recorrenteTag}</div>
-          <div class="meta">${p.descricao || '-'}</div>
+          <div class="meta">${p.descricao || '-'}${vencimentoTxt}</div>
         </div>
         <div class="actions">
           <span class="${cor}" style="margin-right:6px;">${fmt(p.valor)}</span>
@@ -1023,7 +1141,7 @@ function lancarProvisaoAgora(id){
   const p = (data.provisoes||[]).find(x => x.id === id);
   if(!p) return;
   const hojeISO = new Date().toISOString().slice(0,10);
-  const dataFinal = hojeISO.slice(0,7) === p.mes ? hojeISO : (p.mes + '-01');
+  const dataFinal = p.vencimento || (hojeISO.slice(0,7) === p.mes ? hojeISO : (p.mes + '-01'));
   data.lancamentos.push({
     id: uid(),
     data: dataFinal,
@@ -1045,7 +1163,10 @@ document.getElementById('provisaoTipo').addEventListener('change', function(){
 });
 document.getElementById('provisaoCategoria').addEventListener('change', toggleProvisaoRepeteField);
 document.getElementById('provisaoParcelas').addEventListener('input', atualizarProvisaoParcelasInfo);
-document.getElementById('provisaoMesInput').addEventListener('change', atualizarProvisaoParcelasInfo);
+document.getElementById('provisaoMesInput').addEventListener('change', function(){
+  atualizarProvisaoParcelasInfo();
+  atualizarLimitesVencimentoProvisao();
+});
 document.getElementById('provisaoForm').addEventListener('submit', function(e){
   e.preventDefault();
   const mes = document.getElementById('provisaoMesInput').value;
@@ -1057,6 +1178,7 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   const tipo = document.getElementById('provisaoTipo').value;
   const categoria = document.getElementById('provisaoCategoria').value;
   const descricao = document.getElementById('provisaoDescricao').value.trim();
+  const vencimentoInput = document.getElementById('provisaoVencimento').value;
   const repete = document.getElementById('provisaoRepete').checked;
   const repeteAte = document.getElementById('provisaoRepeteAte').value;
   const cartaoCredito = isProvisaoCartaoCredito();
@@ -1065,23 +1187,28 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   if(repete && cartaoCredito && numParcelas > 1){
     const recorrenciaId = uid();
     const meses = gerarMesesQtd(mes, numParcelas);
+    const vencimentoBase = vencimentoInput || (mes + '-01');
+    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoBase);
     meses.forEach((mk, idx) => {
       const descParcela = (descricao ? descricao + ' ' : '') + `(parcela ${idx + 1}/${numParcelas})`;
-      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao: descParcela, recorrenciaId });
+      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao: descParcela, vencimento: vencimentos[idx], recorrenciaId });
     });
   } else if(repete && !cartaoCredito && repeteAte && repeteAte > mes){
     const recorrenciaId = uid();
     const meses = gerarMesesEntre(mes, repeteAte);
-    meses.forEach(mk => {
-      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao, recorrenciaId });
+    const vencimentoBase = vencimentoInput || (mes + '-01');
+    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoBase);
+    meses.forEach((mk, idx) => {
+      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao, vencimento: vencimentos[idx], recorrenciaId });
     });
   } else {
-    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, recorrenciaId: null });
+    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput || null, recorrenciaId: null });
   }
 
   saveData();
   document.getElementById('provisaoValor').value = '';
   document.getElementById('provisaoDescricao').value = '';
+  document.getElementById('provisaoVencimento').value = '';
   document.getElementById('provisaoRepete').checked = false;
   document.getElementById('provisaoRepeteAte').value = '';
   document.getElementById('provisaoParcelas').value = '';
@@ -1220,7 +1347,11 @@ function detalheFor(item){
     if(item.vencimento) partes.push('Vence ' + fmtDate(item.vencimento));
     return partes.length ? partes.join(' • ') : '-';
   }
-  if(item.tipo === 'investimento') return item.tipoInvestimento || '-';
+  if(item.tipo === 'investimento'){
+    const partes = [item.tipoInvestimento || '-'];
+    if(item.meta) partes.push('Meta: ' + item.meta);
+    return partes.join(' • ');
+  }
   if(item.tipo === 'conta') return 'Ajuste de saldo base';
   return '-';
 }
@@ -1290,6 +1421,7 @@ function editLancamento(id){
   document.getElementById('lancVencimento').value = item.vencimento || '';
   document.getElementById('lancParcelas').value = item.parcelas || '';
   document.getElementById('lancTipoInvestimento').value = item.tipoInvestimento || 'Renda Fixa';
+  if(item.tipo === 'investimento') document.getElementById('lancMetaInvestimento').value = item.meta || '';
   document.getElementById('lancSubmitBtn').textContent = 'Salvar alteração';
   document.getElementById('lancCancelBtn').style.display = 'inline-block';
   document.getElementById('lancForm').scrollIntoView({behavior:'smooth', block:'start'});
@@ -1610,10 +1742,35 @@ function renderDividas(){
 }
 
 function renderInvestimentos(){
+  const metasEl = document.getElementById('metasInvestimentoList');
+  const metas = metasInvestimentoAgrupadas();
+  if(metas.length === 0){
+    metasEl.innerHTML = '';
+  } else {
+    metasEl.innerHTML = metas.map(m => {
+      const corBarra = m.atingida ? 'var(--green)' : corBarraOrcamento(m.pct);
+      return `
+        <div class="meta-invest-box">
+          <div class="linha1">
+            <span>${m.atingida ? '🎉 ' : ''}${m.nome}</span>
+            <button class="danger small" onclick="excluirMetaInvestimentoPorId('${m.id}')">Excluir</button>
+          </div>
+          <div class="orc-bar-wrap"><div class="orc-bar" style="width:${m.pct}%; background:${corBarra};"></div></div>
+          <div class="linha2">
+            <span class="blur-target">${fmt(m.valorAtual)} de ${fmt(m.valorMeta)}</span>
+            <span>${m.atingida ? 'Meta atingida ✓' : m.pct.toFixed(0) + '%'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   const list = document.getElementById('investList');
-  const itens = data.lancamentos.filter(l => l.tipo === 'investimento').sort((a,b)=>b.data.localeCompare(a.data));
+  // Investimentos vinculados a uma meta já aparecem representados na caixinha da meta acima;
+  // aqui na lista só mostramos os que não têm meta vinculada.
+  const itens = data.lancamentos.filter(l => l.tipo === 'investimento' && !l.meta).sort((a,b)=>b.data.localeCompare(a.data));
   if(itens.length === 0){
-    list.innerHTML = '<div class="empty">Nenhum investimento cadastrado.</div>';
+    list.innerHTML = metas.length === 0 ? '<div class="empty">Nenhum investimento cadastrado.</div>' : '';
   } else {
     list.innerHTML = itens.map(i => `
       <div class="list-item">
@@ -1702,7 +1859,8 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     limite: tipo === 'cartao' ? (parseFloat(document.getElementById('lancLimite').value) || 0) : null,
     vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
     parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
-    tipoInvestimento: tipo === 'investimento' ? document.getElementById('lancTipoInvestimento').value : null
+    tipoInvestimento: tipo === 'investimento' ? document.getElementById('lancTipoInvestimento').value : null,
+    meta: tipo === 'investimento' ? (document.getElementById('lancMetaInvestimento').value || null) : null
   };
   if(!entry.data || entry.valor <= 0) return;
 
