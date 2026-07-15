@@ -94,6 +94,7 @@
   .login-card input{width:100%;}
   .login-card button{width:100%; margin-top:6px;}
   #loginError{color:var(--red); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;}
+  #logoutNotice{color:var(--green); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;}
 
   .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px;}
   .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto;}
@@ -145,6 +146,7 @@
       <button type="button" class="secondary" id="signupBtn">Criar conta</button>
     </form>
     <div id="loginError"></div>
+    <div id="logoutNotice"></div>
   </div>
 </div>
 
@@ -242,7 +244,7 @@
   <div class="sub">Registre receitas, despesas, cartões de crédito, dívidas, conta corrente e investimentos. Clique nos cards para ver o razão de cada um.</div>
   <div class="user-bar">
     <span id="userEmailDisplay"></span>
-    <button class="secondary small" id="logoutBtn">Sair</button>
+    <button class="secondary small" id="logoutBtn">Sair / Trocar de conta</button>
   </div>
 </div>
 
@@ -421,6 +423,7 @@ const db = firebase.firestore();
 
 let docRef = null;
 let unsubscribeSnapshot = null;
+let logoutManual = false;
 const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
 
 function traduzErroFirebase(code){
@@ -454,6 +457,11 @@ function showLogin(){
   document.getElementById('olhoValoresBtn').style.display = 'none';
   fecharOrcamento();
   fecharProvisoes();
+  document.getElementById('loginForm').reset();
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('logoutNotice').textContent = logoutManual ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.' : '';
+  logoutManual = false;
+  document.body.classList.remove('valores-ocultos');
 }
 function showApp(){
   document.getElementById('loadingScreen').style.display = 'none';
@@ -462,6 +470,7 @@ function showApp(){
   document.getElementById('orcamentoIconBtn').style.display = 'flex';
   document.getElementById('provisoesIconBtn').style.display = 'flex';
   document.getElementById('olhoValoresBtn').style.display = 'flex';
+  document.getElementById('logoutNotice').textContent = '';
 }
 
 function toggleValores(){
@@ -505,6 +514,7 @@ auth.onAuthStateChanged(function(user){
 document.getElementById('loginForm').addEventListener('submit', function(e){
   e.preventDefault();
   document.getElementById('loginError').textContent = '';
+  document.getElementById('logoutNotice').textContent = '';
   const email = document.getElementById('loginEmail').value.trim();
   const senha = document.getElementById('loginSenha').value;
   auth.signInWithEmailAndPassword(email, senha).catch(function(err){
@@ -513,6 +523,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e){
 });
 document.getElementById('signupBtn').addEventListener('click', function(){
   document.getElementById('loginError').textContent = '';
+  document.getElementById('logoutNotice').textContent = '';
   const email = document.getElementById('loginEmail').value.trim();
   const senha = document.getElementById('loginSenha').value;
   if(!email || senha.length < 6){
@@ -524,6 +535,7 @@ document.getElementById('signupBtn').addEventListener('click', function(){
   });
 });
 document.getElementById('logoutBtn').addEventListener('click', function(){
+  logoutManual = true;
   auth.signOut();
 });
 
