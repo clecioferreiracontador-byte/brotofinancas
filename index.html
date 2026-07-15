@@ -138,6 +138,17 @@
   .conta-forma-box .label{color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:.03em;}
   .conta-forma-box .value{font-size:1.1rem; font-weight:700; margin-top:4px;}
   .conta-forma-linhas{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+
+  .top-despesas-box{position:absolute; top:4px; right:4px; width:230px; max-width:52%; max-height:175px; background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; z-index:2; overflow-y:auto;}
+  .top-despesas-box .titulo{font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.02em; margin-bottom:6px;}
+  .top-despesa-row{font-size:0.72rem; padding:3px 0; border-bottom:1px solid var(--border);}
+  .top-despesa-row:last-child{border-bottom:none;}
+  .top-despesa-row .linha-nome{display:flex; align-items:baseline; gap:4px; margin-bottom:1px;}
+  .top-despesa-row .rank{color:var(--muted); font-weight:700; flex-shrink:0;}
+  .top-despesa-row .cat{font-weight:600; white-space:normal; overflow-wrap:break-word; line-height:1.15;}
+  .top-despesa-row .linha-valor{display:flex; justify-content:space-between; gap:6px;}
+  .top-despesa-row .val{font-weight:600;}
+  .top-despesa-row .pct{color:var(--muted); font-size:0.68rem;}
 </style>
 </head>
 <body>
@@ -365,7 +376,10 @@
 <div class="grid2 row-gap">
   <div class="panel">
     <h2>📊 Despesas por Categoria (%)</h2>
-    <div class="chart-box"><canvas id="chartCategorias"></canvas></div>
+    <div class="chart-box">
+      <canvas id="chartCategorias"></canvas>
+      <div class="top-despesas-box" id="topDespesasList"></div>
+    </div>
   </div>
   <div class="panel">
     <h2>📈 Receita x Despesa por Mês</h2>
@@ -1679,6 +1693,7 @@ function renderCharts(){
     },
     options: {
       responsive:true, maintainAspectRatio:false,
+      layout: { padding: { right: 90 } },
       plugins: {
         legend: { position:'bottom', labels:{color:'#e2e8f0', boxWidth:12, font:{size:11}} },
         tooltip: {
@@ -1693,6 +1708,27 @@ function renderCharts(){
       }
     }
   });
+
+  // Ranking das 6 maiores despesas do mês (por categoria), exibido ao lado do gráfico.
+  const rankingDespesas = Object.entries(despesasPorCat).sort((a,b) => b[1] - a[1]).slice(0,6);
+  const totalDespesasCat = catValues.reduce((s,v)=>s+v,0);
+  const topListEl = document.getElementById('topDespesasList');
+  if(topListEl){
+    if(rankingDespesas.length === 0){
+      topListEl.innerHTML = '<div class="titulo">Maiores despesas</div><div class="hint">Sem despesas no mês.</div>';
+    } else {
+      topListEl.innerHTML = '<div class="titulo">Top ' + rankingDespesas.length + ' maiores despesas</div>' +
+        rankingDespesas.map(([cat, val], idx) => {
+          const pct = totalDespesasCat ? ((val / totalDespesasCat) * 100).toFixed(1) : 0;
+          return `
+            <div class="top-despesa-row">
+              <div class="linha-nome"><span class="rank">${idx + 1}º</span><span class="cat">${cat}</span></div>
+              <div class="linha-valor"><span class="val neg blur-target">${fmt(val)}</span><span class="pct">${pct}%</span></div>
+            </div>
+          `;
+        }).join('');
+    }
+  }
 
   const meses = {};
   data.lancamentos.filter(l=>l.tipo==='receita'||l.tipo==='despesa').forEach(l => {
