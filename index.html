@@ -133,6 +133,11 @@
   .meta-invest-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;}
   .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
   .meta-invest-box .linha2{display:flex; justify-content:space-between; margin-top:6px; font-size:0.76rem; color:var(--muted);}
+
+  .conta-forma-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;}
+  .conta-forma-box .label{color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:.03em;}
+  .conta-forma-box .value{font-size:1.1rem; font-weight:700; margin-top:4px;}
+  .conta-forma-linhas{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -261,7 +266,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -276,6 +281,13 @@
         <option value="divida">Dívida</option>
         <option value="conta">Conta Corrente</option>
         <option value="investimento">Investimento</option>
+      </select>
+    </div>
+    <div class="field" id="fieldFormaConta">
+      <label>Espécie ou Banco</label>
+      <select id="lancFormaConta">
+        <option value="Banco">Banco</option>
+        <option value="Espécie">Espécie</option>
       </select>
     </div>
     <div class="field" id="fieldCartaoNome">
@@ -373,6 +385,16 @@
       <div class="label">Saldo atual (calculado)</div>
       <div class="value info" id="contaSaldoDisplay">R$ 0,00</div>
       <div class="hint" id="contaDataDisplay" style="margin-top:6px;"></div>
+    </div>
+    <div class="conta-forma-linhas" style="margin-top:14px;">
+      <div class="conta-forma-box">
+        <div class="label">Saldo em Banco</div>
+        <div class="value info blur-target" id="contaSaldoBanco">R$ 0,00</div>
+      </div>
+      <div class="conta-forma-box">
+        <div class="label">Saldo em Espécie</div>
+        <div class="value info blur-target" id="contaSaldoEspecie">R$ 0,00</div>
+      </div>
     </div>
     <div class="chart-box" style="height:160px; margin-top:14px;"><canvas id="chartFluxoProjetadoInline"></canvas></div>
   </div>
@@ -807,7 +829,8 @@ function updateFormFieldsVisibility(tipo){
     fieldVencimento: tipo === 'cartao' || tipo === 'divida',
     fieldParcelas: tipo === 'divida',
     fieldTipoInvestimento: tipo === 'investimento',
-    fieldMetaInvestimento: tipo === 'investimento'
+    fieldMetaInvestimento: tipo === 'investimento',
+    fieldFormaConta: tipo === 'receita' || tipo === 'despesa' || tipo === 'conta'
   };
   Object.keys(map).forEach(id => {
     document.getElementById(id).style.display = map[id] ? 'flex' : 'none';
@@ -843,16 +866,33 @@ function sumByTipo(tipo){
   return data.lancamentos.filter(l => l.tipo === tipo).reduce((s,l) => s + Number(l.valor), 0);
 }
 
-// Saldo da conta corrente = TODAS as receitas menos TODAS as despesas lançadas (sem exceção de data),
-// mais um ajuste de base opcional (botão "Ajustar saldo base", usado só para corrigir o saldo quando necessário).
+// Saldo da conta corrente, discriminado por forma ("Banco" ou "Espécie"). Lançamentos antigos
+// que não tinham esse campo são tratados como "Banco" por padrão (compatibilidade).
+function formaDoItem(l){
+  return l.forma || 'Banco';
+}
+function calcularSaldoPorForma(forma){
+  const contaEntries = data.lancamentos.filter(l => l.tipo === 'conta' && formaDoItem(l) === forma);
+  const baseline = contaEntries.length ? contaEntries.reduce((a,b) => (b.data >= a.data ? b : a)) : null;
+  const baselineValor = baseline ? Number(baseline.valor) : 0;
+  const movimentos = data.lancamentos.filter(l => (l.tipo === 'receita' || l.tipo === 'despesa') && formaDoItem(l) === forma);
+  const somaMovimentos = movimentos.reduce((s,l) => s + (l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor)), 0);
+  return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
+}
+
+// Saldo total da conta corrente = soma do saldo em Banco + saldo em Espécie.
 // Lançamentos do tipo Cartão de Crédito NÃO entram aqui — só acompanham a fatura. Quando a fatura é paga,
 // lance como Despesa (categoria "Cartão de Crédito") e aí sim desconta do saldo, normalmente.
 function calcularSaldoContaCorrente(){
-  const baseline = latestByTipo('conta');
-  const baselineValor = baseline ? Number(baseline.valor) : 0;
-  const movimentos = data.lancamentos.filter(l => l.tipo === 'receita' || l.tipo === 'despesa');
-  const somaMovimentos = movimentos.reduce((s,l) => s + (l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor)), 0);
-  return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
+  const banco = calcularSaldoPorForma('Banco');
+  const especie = calcularSaldoPorForma('Espécie');
+  const baselines = [banco.baseline, especie.baseline].filter(Boolean);
+  return {
+    saldo: banco.saldo + especie.saldo,
+    banco, especie,
+    baseline: baselines.length ? baselines.reduce((a,b)=>(b.data>=a.data?b:a)) : null,
+    movimentos: banco.movimentos.concat(especie.movimentos)
+  };
 }
 
 // Cartões: agrupa lançamentos tipo cartao por nome (compras) e cruza com despesas
@@ -916,7 +956,7 @@ function pagarFatura(idx){
     categoria: 'Cartão de Crédito',
     valor: Number(valorPago.toFixed(2)),
     descricao: 'Pagamento fatura - ' + cartao.nome,
-    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: cartao.nome
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
   });
 
   saveData();
@@ -1149,7 +1189,7 @@ function lancarProvisaoAgora(id){
     categoria: p.categoria,
     valor: Number(p.valor),
     descricao: (p.descricao ? p.descricao + ' ' : '') + '(provisão)',
-    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null, forma: 'Banco'
   });
   data.provisoes = data.provisoes.filter(x => x.id !== id);
   saveData();
@@ -1332,6 +1372,7 @@ function detalheFor(item){
     if(item.tipo === 'despesa' && item.categoria === 'Cartão de Crédito' && item.nome){
       base += ' (' + item.nome + ')';
     }
+    base += ' • ' + (item.forma || 'Banco');
     return base;
   }
   if(item.tipo === 'cartao'){
@@ -1352,7 +1393,7 @@ function detalheFor(item){
     if(item.meta) partes.push('Meta: ' + item.meta);
     return partes.join(' • ');
   }
-  if(item.tipo === 'conta') return 'Ajuste de saldo base';
+  if(item.tipo === 'conta') return 'Ajuste de saldo base (' + (item.forma || 'Banco') + ')';
   return '-';
 }
 
@@ -1421,6 +1462,7 @@ function editLancamento(id){
   document.getElementById('lancVencimento').value = item.vencimento || '';
   document.getElementById('lancParcelas').value = item.parcelas || '';
   document.getElementById('lancTipoInvestimento').value = item.tipoInvestimento || 'Renda Fixa';
+  document.getElementById('lancFormaConta').value = item.forma || 'Banco';
   if(item.tipo === 'investimento') document.getElementById('lancMetaInvestimento').value = item.meta || '';
   document.getElementById('lancSubmitBtn').textContent = 'Salvar alteração';
   document.getElementById('lancCancelBtn').style.display = 'inline-block';
@@ -1467,7 +1509,7 @@ function baixarParcela(id){
     categoria: 'Dívidas',
     valor: Number(valorPago.toFixed(2)),
     descricao: 'Parcela paga - ' + (item.descricao || 'dívida'),
-    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null, forma: 'Banco'
   });
 
   item.valor = Math.max(0, Number((Number(item.valor) - valorPago).toFixed(2)));
@@ -1490,8 +1532,9 @@ function getRazaoConfig(key){
 
   if(key === 'conta'){
     const calc = calcularSaldoContaCorrente();
-    itens = calc.baseline ? [calc.baseline].concat(calc.movimentos) : calc.movimentos;
-    titulo = 'Razão — Conta Corrente (saldo base + receitas/despesas)';
+    const baselines = [calc.banco.baseline, calc.especie.baseline].filter(Boolean);
+    itens = baselines.concat(calc.movimentos);
+    titulo = 'Razão — Conta Corrente (saldo base + receitas/despesas, Banco e Espécie)';
     total = calc.saldo;
     totalLabel = 'Saldo atual (calculado)';
   } else if(key === 'cartao'){
@@ -1792,10 +1835,12 @@ function renderInvestimentos(){
 function renderContaPanel(){
   const calc = calcularSaldoContaCorrente();
   document.getElementById('contaSaldoDisplay').textContent = fmt(calc.saldo);
+  document.getElementById('contaSaldoBanco').textContent = fmt(calc.banco.saldo);
+  document.getElementById('contaSaldoEspecie').textContent = fmt(calc.especie.saldo);
   if(calc.baseline){
-    document.getElementById('contaDataDisplay').textContent = 'Base ' + fmt(calc.baseline.valor) + ' (ajustada em ' + fmtDate(calc.baseline.data) + ') + todas as receitas/despesas lançadas';
+    document.getElementById('contaDataDisplay').textContent = 'Inclui ajustes de saldo base (Banco e/ou Espécie) + todas as receitas/despesas lançadas';
   } else {
-    document.getElementById('contaDataDisplay').textContent = 'Soma de todas as receitas menos todas as despesas lançadas';
+    document.getElementById('contaDataDisplay').textContent = 'Soma de todas as receitas menos todas as despesas lançadas, separadas por Banco e Espécie';
   }
 }
 
@@ -1848,6 +1893,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
   const tipo = document.getElementById('lancTipo').value;
   const categoria = (tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') ? document.getElementById('lancCategoria').value : null;
   const usaCartaoNome = tipo === 'cartao' || (tipo === 'despesa' && categoria === 'Cartão de Crédito');
+  const usaForma = tipo === 'receita' || tipo === 'despesa' || tipo === 'conta';
   const entry = {
     id: editingId || uid(),
     data: document.getElementById('lancData').value,
@@ -1860,7 +1906,8 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
     parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
     tipoInvestimento: tipo === 'investimento' ? document.getElementById('lancTipoInvestimento').value : null,
-    meta: tipo === 'investimento' ? (document.getElementById('lancMetaInvestimento').value || null) : null
+    meta: tipo === 'investimento' ? (document.getElementById('lancMetaInvestimento').value || null) : null,
+    forma: usaForma ? document.getElementById('lancFormaConta').value : null
   };
   if(!entry.data || entry.valor <= 0) return;
 
