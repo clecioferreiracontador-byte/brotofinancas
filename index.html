@@ -252,7 +252,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão: o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes). Ao lado da categoria, use "+" para criar uma nova e "−" para excluir a categoria selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -794,6 +794,38 @@ function populateCartoesDatalist(){
   if(!datalist) return;
   const nomes = cartoesAgrupados().map(c => c.nome);
   datalist.innerHTML = nomes.map(n => `<option value="${n}"></option>`).join('');
+}
+
+// Baixa (paga) a fatura de um cartão específico: lança automaticamente uma Despesa
+// na categoria "Cartão de Crédito" com o nome do cartão, abatendo o saldo em aberto.
+// Recebe o índice do cartão dentro de cartoesAgrupados() para evitar problemas de
+// escaping quando o nome do cartão tem acentos, aspas etc.
+function pagarFatura(idx){
+  const cartoes = cartoesAgrupados();
+  const cartao = cartoes[idx];
+  if(!cartao) return;
+  if(cartao.total <= 0){
+    alert('Esse cartão não tem fatura em aberto para pagar.');
+    return;
+  }
+  const sugestao = cartao.total;
+  const entrada = prompt('Valor pago agora na fatura do cartão "' + cartao.nome + '" (saldo em aberto: ' + fmt(cartao.total) + '):', sugestao.toFixed(2));
+  if(entrada === null) return;
+  const valorPago = parseFloat(String(entrada).replace(',', '.')) || sugestao;
+  if(valorPago <= 0) return;
+
+  data.lancamentos.push({
+    id: uid(),
+    data: new Date().toISOString().slice(0,10),
+    tipo: 'despesa',
+    categoria: 'Cartão de Crédito',
+    valor: Number(valorPago.toFixed(2)),
+    descricao: 'Pagamento fatura - ' + cartao.nome,
+    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: cartao.nome
+  });
+
+  saveData();
+  renderAll();
 }
 
 // ---------- Orçamento do Mês ----------
@@ -1617,13 +1649,14 @@ function renderCartoesPanel(){
   if(cartoes.length === 0){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
-    list.innerHTML = cartoes.map(c => {
+    list.innerHTML = cartoes.map((c, idx) => {
       const uso = c.limite ? ((c.total / c.limite) * 100).toFixed(1) : null;
       const metaPartes = [c.qtdLancamentos + ' compra' + (c.qtdLancamentos===1?'':'s')];
       if(c.limite) metaPartes.push('Limite ' + fmt(c.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
       if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
       if(c.totalPago > 0) metaPartes.push('Pago ' + fmt(c.totalPago));
       const btnEditar = c.latestId ? `<button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>` : '';
+      const btnPagar = c.total > 0 ? `<button class="baixa" onclick="pagarFatura(${idx})">Pagar fatura</button>` : '<span class="quitada-tag">Em dia ✓</span>';
       return `
       <div class="list-item">
         <div>
@@ -1632,6 +1665,7 @@ function renderCartoesPanel(){
         </div>
         <div class="actions">
           <span class="warn" style="margin-right:6px;">${fmt(c.total)}</span>
+          ${btnPagar}
           ${btnEditar}
         </div>
       </div>
