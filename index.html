@@ -203,7 +203,7 @@
       <h3>Provisões (receitas/despesas futuras)</h3>
       <button class="secondary small" onclick="fecharProvisoes()">Fechar</button>
     </div>
-    <div class="hint" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real.</div>
+    <div class="hint" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real. Use "📅 Lembrete" para abrir o Google Agenda já preenchido com um aviso 1 dia antes do vencimento (você só confirma "Salvar" por lá).</div>
     <div class="month-filter">
       <label style="color:var(--muted); font-size:0.85rem;">Mês da provisão:</label>
       <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
@@ -277,7 +277,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
+  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento e lembrete no Google Agenda). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
@@ -610,6 +610,16 @@ function addOneMonth(dateStr){
   const lastDay = new Date(newYear, newMonth, 0).getDate();
   const newDay = Math.min(d, lastDay);
   return `${newYear}-${String(newMonth).padStart(2,'0')}-${String(newDay).padStart(2,'0')}`;
+}
+
+function addDays(dateStr, delta){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return d.toISOString().slice(0,10);
+}
+
+function toGCalDate(dateStr){
+  return dateStr.replace(/-/g, '');
 }
 
 function nextMonthKeyFromToday(){
@@ -1167,6 +1177,7 @@ function renderProvisoes(){
         </div>
         <div class="actions">
           <span class="${cor}" style="margin-right:6px;">${fmt(p.valor)}</span>
+          <button class="secondary small" onclick="abrirGoogleAgendaProvisao('${p.id}')" title="Abrir Google Agenda com lembrete 1 dia antes do vencimento">📅 Lembrete</button>
           <button class="baixa" onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
           <button class="danger" onclick="excluirProvisao('${p.id}')">x</button>
           ${btnExcluirSerie}
@@ -1209,6 +1220,25 @@ function lancarProvisaoAgora(id){
   saveData();
   renderAll();
   renderProvisoes();
+}
+
+// Abre o Google Agenda com um evento pré-preenchido, na data 1 dia antes do vencimento
+// da provisão, como lembrete. O usuário só confirma "Salvar" na tela do Google.
+function abrirGoogleAgendaProvisao(id){
+  const p = (data.provisoes||[]).find(x => x.id === id);
+  if(!p) return;
+  const vencimentoBase = p.vencimento || (p.mes + '-01');
+  const dataLembrete = addDays(vencimentoBase, -1);
+  const dataFim = addDays(dataLembrete, 1);
+  const tipoLabel = p.tipo === 'receita' ? 'Receita' : 'Despesa';
+  const titulo = 'Lembrete: ' + tipoLabel + ' ' + p.categoria + (p.descricao ? ' - ' + p.descricao : '') + ' (' + fmt(p.valor) + ')';
+  const detalhes = 'Vence em ' + fmtDate(vencimentoBase) + '. Valor: ' + fmt(p.valor) + '. Categoria: ' + p.categoria +
+    (p.descricao ? '. ' + p.descricao : '') + '. Gerado pela Planilha Financeira Micelc.';
+  const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(titulo)
+    + '&dates=' + toGCalDate(dataLembrete) + '/' + toGCalDate(dataFim)
+    + '&details=' + encodeURIComponent(detalhes);
+  window.open(url, '_blank');
 }
 
 document.getElementById('provisaoTipo').addEventListener('change', function(){
