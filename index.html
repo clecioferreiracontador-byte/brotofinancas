@@ -77,7 +77,7 @@
   .quitada-tag{background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600;}
   .recorrente-tag{background:rgba(59,130,246,0.15); color:var(--blue); padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600;}
   .banco-badge{
-    display:inline-flex; align-items:center; justify-content:center; width:44px; height:24px;
+    display:inline-flex; align-items:center; justify-content:center; width:36px; height:20px;
     margin-right:6px; flex-shrink:0; vertical-align:middle; overflow:hidden;
   }
   .banco-badge img{ display:block; max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
@@ -2828,11 +2828,8 @@ function renderCartoesPanel(){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
     list.innerHTML = cartoes.map((c, idx) => {
-      const uso = c.limite ? ((c.total / c.limite) * 100).toFixed(1) : null;
-      const metaPartes = [c.qtdLancamentos + ' compra' + (c.qtdLancamentos===1?'':'s')];
-      if(c.limite) metaPartes.push('Limite ' + fmt(c.limite) + (uso!==null ? ` (uso ${uso}%)` : ''));
+      const metaPartes = [];
       if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
-      if(c.totalPago > 0) metaPartes.push('Pago ' + fmt(c.totalPago));
       const btnEditar = c.latestId ? `<button class="edit" onclick="editLancamento('${c.latestId}')">Editar</button>` : '';
       const btnPagar = c.total > 0 ? `<button class="baixa" onclick="pagarFatura(${idx})">Pagar fatura</button>` : '<span class="quitada-tag">Em dia ✓</span>';
       return `
