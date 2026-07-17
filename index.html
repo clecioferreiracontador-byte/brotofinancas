@@ -78,7 +78,7 @@
   .recorrente-tag{background:rgba(59,130,246,0.15); color:var(--blue); padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600;}
   .banco-badge{
     display:inline-flex; align-items:center; justify-content:center; height:22px; max-width:56px;
-    border-radius:6px; background:#ffffff; border:1px solid var(--border); padding:2px 6px;
+    border-radius:6px; background:var(--card2); border:1px solid var(--border); padding:2px 6px;
     margin-right:6px; flex-shrink:0; vertical-align:middle; overflow:hidden;
   }
   .banco-badge img{ display:block; height:100%; width:auto; max-width:100%; object-fit:contain; }
@@ -151,20 +151,16 @@
   .bottom-nav-btn .bn-icon svg{ width:22px; height:22px; }
   .bottom-nav-btn .bn-label{ font-size:0.66rem; font-weight:600; }
 
-  /* Saudação + avatar, no canto superior esquerdo (espelha o menu de conta à direita) */
-  .perfil-wrap{ position:fixed; top:16px; left:16px; z-index:960; display:flex; align-items:center; gap:10px; max-width:calc(100% - 150px); }
+  /* Foto de perfil, no canto superior esquerdo (espelha o menu de conta à direita) */
+  .perfil-wrap{ position:fixed; top:16px; left:16px; z-index:960; }
   .avatar-btn{
-    background:var(--card2); border:1px solid var(--border); border-radius:50%;
+    background:var(--card2); color:var(--muted); border:1px solid var(--border); border-radius:50%;
     width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; font-size:1.5rem; box-shadow:0 2px 10px rgba(0,0,0,0.4); line-height:1;
+    cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.4); overflow:hidden; padding:0;
   }
   .avatar-btn:hover{ opacity:0.85; }
-  .avatar-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-  .avatar-grid button{
-    background:var(--card2); border:1px solid var(--border); border-radius:12px; font-size:1.7rem;
-    padding:10px 0; cursor:pointer; line-height:1;
-  }
-  .avatar-grid button:hover, .avatar-grid button.selected{ border-color:var(--blue); }
+  .avatar-btn svg{ width:24px; height:24px; }
+  .avatar-btn img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
 
   /* Menu de conta flutuante (perfil / valores / sair) */
   .account-menu-wrap{ position:fixed; top:16px; right:16px; z-index:960; }
@@ -201,7 +197,7 @@
   /* Botão "ver maiores gastos" (só aparece no celular; no desktop a lista já fica sempre visível) */
   .top-despesas-toggle{ display:none; }
 
-  .home-greeting{ font-size:1rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .home-greeting{ font-size:1.15rem; font-weight:700; margin:2px 0 10px; }
   .home-mes-picker{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:18px; }
   .home-mes-picker label{ color:var(--muted); font-size:0.8rem; font-weight:600; }
   .home-mes-picker input{ min-width:0; }
@@ -328,9 +324,9 @@
     .account-menu-wrap{ top:10px; right:10px; }
     .menu-btn{ width:46px; height:46px; }
     .menu-btn svg{ width:22px; height:22px; }
-    .perfil-wrap{ top:10px; left:10px; max-width:calc(100% - 130px); }
-    .avatar-btn{ width:46px; height:46px; font-size:1.35rem; }
-    .home-greeting{ font-size:0.9rem; }
+    .perfil-wrap{ top:10px; left:10px; }
+    .avatar-btn{ width:46px; height:46px; }
+    .avatar-btn svg{ width:21px; height:21px; }
   }
 </style>
 </head>
@@ -358,20 +354,11 @@
 </div>
 
 <div id="perfilWrap" class="perfil-wrap" style="display:none;">
-  <button id="avatarBtn" class="avatar-btn" onclick="abrirAvatarModal()" title="Editar foto">
-    <span id="avatarEmoji">🙂</span>
+  <button id="avatarBtn" class="avatar-btn" onclick="document.getElementById('avatarFileInput').click()" title="Escolher foto da galeria">
+    <span class="ami-icon" id="avatarPlaceholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21c1.5-4.5 5-6 8-6s6.5 1.5 8 6"/></svg></span>
+    <img id="avatarImg" alt="Foto de perfil" style="display:none;">
   </button>
-  <div class="home-greeting" id="homeGreeting"></div>
-</div>
-
-<div id="avatarModal" class="modal-overlay" onclick="if(event.target===this) fecharAvatarModal()">
-  <div class="modal-card" style="max-width:360px;">
-    <div class="modal-header">
-      <h3>Escolha sua foto</h3>
-      <button class="secondary small" onclick="fecharAvatarModal()">Fechar</button>
-    </div>
-    <div class="avatar-grid" id="avatarGrid"></div>
-  </div>
+  <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="processarFotoPerfil(event)">
 </div>
 
 <div id="accountMenuWrap" class="account-menu-wrap" style="display:none;">
@@ -519,7 +506,8 @@
 <div class="header-block">
   <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
   <span class="app-logo-name">Micelc</span>
-  <div class="sub">Registre sua movimentação do mês, e clique nos cards para visualizá-los.</div>
+  <div class="home-greeting" id="homeGreeting"></div>
+  <div class="sub"></div>
 </div>
 
 <div class="home-mes-picker">
@@ -930,28 +918,44 @@ function primeiroNome(nomeCompleto){
 function atualizarSaudacao(){
   const nome = primeiroNome(data.perfilNome);
   document.getElementById('homeGreeting').textContent = nome ? 'Olá, ' + nome : '';
-  document.getElementById('avatarEmoji').textContent = data.perfilAvatar || '🙂';
+  const img = document.getElementById('avatarImg');
+  const placeholder = document.getElementById('avatarPlaceholder');
+  if(data.perfilAvatar){
+    img.src = data.perfilAvatar;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
 }
 
-// ---------- Foto de perfil (emoji, sem precisar de upload de arquivo) ----------
-const AVATARES_DISPONIVEIS = ['🙂','😀','😎','🤓','🥳','👦','👧','👨','👩','🧑','👴','👵','🦒','🐶','🐱','🦊','🐻','🐼','🦁','🐨','🐸','🦉','🐵','🐰'];
-
-function abrirAvatarModal(){
-  const grid = document.getElementById('avatarGrid');
-  grid.innerHTML = AVATARES_DISPONIVEIS.map(emoji => {
-    const selecionado = (data.perfilAvatar || '🙂') === emoji;
-    return `<button type="button" class="${selecionado ? 'selected' : ''}" onclick="escolherAvatar('${emoji}')">${emoji}</button>`;
-  }).join('');
-  document.getElementById('avatarModal').style.display = 'flex';
-}
-function fecharAvatarModal(){
-  document.getElementById('avatarModal').style.display = 'none';
-}
-function escolherAvatar(emoji){
-  data.perfilAvatar = emoji;
-  saveData();
-  atualizarSaudacao();
-  fecharAvatarModal();
+// ---------- Foto de perfil (escolhida da galeria do aparelho) ----------
+// Redimensiona/comprime no navegador antes de salvar, pra caber tranquilo no documento do Firestore.
+function processarFotoPerfil(e){
+  const arquivo = e.target.files[0];
+  e.target.value = '';
+  if(!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = function(ev){
+    const img = new Image();
+    img.onload = function(){
+      const tam = 200;
+      const canvas = document.createElement('canvas');
+      canvas.width = tam;
+      canvas.height = tam;
+      const ctx = canvas.getContext('2d');
+      const escala = Math.max(tam / img.width, tam / img.height);
+      const w = img.width * escala, h = img.height * escala;
+      ctx.drawImage(img, (tam - w) / 2, (tam - h) / 2, w, h);
+      data.perfilAvatar = canvas.toDataURL('image/jpeg', 0.82);
+      saveData();
+      atualizarSaudacao();
+    };
+    img.src = ev.target.result;
+  };
+  leitor.readAsDataURL(arquivo);
 }
 
 function garantirNomePerfil(){
