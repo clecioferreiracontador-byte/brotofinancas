@@ -177,6 +177,9 @@
     .field input, .field select{ width:100%; }
     input, select{ font-size:0.82rem; padding:7px 8px; min-width:0; }
 
+    /* Esconde os textos explicativos longos (parágrafos de ajuda) — mantém só os avisos curtos e essenciais */
+    .hint-desktop-only{ display:none; }
+
     table{ font-size:0.74rem; }
     th, td{ padding:6px 4px; }
     .tbl-wrap{ max-height:260px; }
@@ -187,9 +190,11 @@
 
     .chart-box{ height:210px; }
 
-    .top-despesas-box{ width:130px; max-width:44%; max-height:150px; padding:5px 6px; }
-    .top-despesas-box .titulo{ font-size:0.6rem; margin-bottom:4px; }
-    .top-despesa-row{ font-size:0.6rem; padding:2px 0; }
+    .top-despesas-box{ width:96px; max-width:36%; max-height:118px; padding:4px 5px; top:2px; right:2px; }
+    .top-despesas-box .titulo{ font-size:0.52rem; margin-bottom:3px; letter-spacing:0; }
+    .top-despesa-row{ font-size:0.52rem; padding:1px 0; }
+    .top-despesa-row .linha-nome{ margin-bottom:0; gap:2px; }
+    .top-despesa-row .pct{ font-size:0.5rem; }
 
     .modal-card{ padding:14px; max-height:88vh; }
     .modal-header h3{ font-size:0.92rem; }
@@ -258,7 +263,7 @@
       <h3>Provisões (receitas/despesas futuras)</h3>
       <button class="secondary small" onclick="fecharProvisoes()">Fechar</button>
     </div>
-    <div class="hint" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real. Use "📅 Lembrete" para abrir o Google Agenda já preenchido com um aviso 1 dia antes do vencimento (você só confirma "Salvar" por lá).</div>
+    <div class="hint hint-desktop-only" style="margin-bottom:12px;">Cadastre já receitas e despesas esperadas para os próximos meses. Quando chegar a hora, use "Lançar agora" para transformar em um lançamento real. Use "📅 Lembrete" para abrir o Google Agenda já preenchido com um aviso 1 dia antes do vencimento (você só confirma "Salvar" por lá).</div>
     <div class="month-filter">
       <label style="color:var(--muted); font-size:0.85rem;">Mês da provisão:</label>
       <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
@@ -303,7 +308,7 @@
       </div>
       <button type="submit">Adicionar</button>
     </form>
-    <div class="hint" style="margin-bottom:10px;">Marque "Se repete" para casos como salário, despesas fixas ou parcelas fixas: a provisão é criada automaticamente todo mês (mantendo o mesmo dia de vencimento). Para Despesa na categoria "Cartão de Crédito", em vez do mês final você informa o número de parcelas e o sistema calcula sozinho até qual mês vai a última.</div>
+    <div class="hint hint-desktop-only" style="margin-bottom:10px;">Marque "Se repete" para casos como salário, despesas fixas ou parcelas fixas: a provisão é criada automaticamente todo mês (mantendo o mesmo dia de vencimento). Para Despesa na categoria "Cartão de Crédito", em vez do mês final você informa o número de parcelas e o sistema calcula sozinho até qual mês vai a última.</div>
     <div class="totals-line" style="margin-top:14px;">
       <span>Receita prevista</span><span class="pos" id="provisaoTotalReceita">R$ 0,00</span>
     </div>
@@ -332,7 +337,7 @@
 
 <div class="panel row-gap">
   <h2><span class="title">➕ Lançamentos</span></h2>
-  <div class="hint" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento e lembrete no Google Agenda). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
+  <div class="hint hint-desktop-only" style="margin-bottom:10px;">Escolha o tipo para liberar os campos certos: Receita, Despesa, Cartão de Crédito, Dívida, Conta Corrente ou Investimento. Receita soma e Despesa desconta automaticamente do saldo da conta corrente. O tipo Cartão de Crédito serve só para acompanhar a fatura de cada cartão (não mexe no saldo). Ao pagar a fatura, lance como Despesa na categoria "Cartão de Crédito" e informe o nome do cartão (ou use o botão "Pagar fatura" na lista de cartões abaixo): o saldo em aberto daquele cartão é baixado automaticamente pelo valor pago. Para Receita, Despesa e Conta Corrente, escolha também se o movimento é em Espécie (dinheiro) ou em Banco, para acompanhar os dois saldos separadamente. Em Investimento, você pode vincular a uma meta (ex: "Viagem 30.000,00") para acompanhar o progresso. Use os botões no canto superior esquerdo: "Orçamento" para controlar quanto pode gastar por categoria, e "Provisões" para já deixar planejadas receitas/despesas dos próximos meses (inclusive recorrentes, com dia de vencimento e lembrete no Google Agenda). Ao lado da categoria/meta, use "+" para criar uma nova e "−" para excluir a selecionada.</div>
   <form class="inline" id="lancForm">
     <div class="field">
       <label>Data</label>
