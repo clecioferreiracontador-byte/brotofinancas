@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Micelc</title>
-<link rel="manifest" href="manifest.json?v=3">
-<link rel="icon" href="icons/icon-32.png?v=3" type="image/png" sizes="32x32">
-<link rel="icon" href="icons/icon-192.png?v=3" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=3">
+<link rel="manifest" href="manifest.json?v=4">
+<link rel="icon" href="icons/icon-32.png?v=4" type="image/png" sizes="32x32">
+<link rel="icon" href="icons/icon-192.png?v=4" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=4">
 <meta name="apple-mobile-web-app-title" content="Micelc">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f172a">
@@ -36,8 +36,8 @@
   }
   .header-block{text-align:center; margin-bottom:24px; position:relative;}
   h1{font-size:1.9rem; margin:0 0 6px 0; letter-spacing:.02em;}
-  .app-logo{display:block; margin:0 auto 8px; width:76px; height:76px; border-radius:20px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
-  .login-card .app-logo{width:64px; height:64px; border-radius:17px; margin-bottom:8px;}
+  .app-logo{display:block; margin:0 auto 8px; width:96px; height:96px; border-radius:24px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
+  .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .sub{color:var(--muted); font-size:0.9rem;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
@@ -130,7 +130,7 @@
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
   /* padding-top evita que o cabeçalho da página (título + botão Voltar) fique atrás do
      botão de conta fixo no canto superior direito */
-  .page-view{display:none; padding-top:56px;}
+  .page-view{display:none; padding-top:66px;}
   .page-view .view-card{max-width:820px; margin:0 auto 24px;}
 
   /* Barra de navegação inferior fixa (só aparece logado), estilo apps de banco */
@@ -151,15 +151,30 @@
   .bottom-nav-btn .bn-icon svg{ width:22px; height:22px; }
   .bottom-nav-btn .bn-label{ font-size:0.66rem; font-weight:600; }
 
+  /* Saudação + avatar, no canto superior esquerdo (espelha o menu de conta à direita) */
+  .perfil-wrap{ position:fixed; top:16px; left:16px; z-index:960; display:flex; align-items:center; gap:10px; max-width:calc(100% - 150px); }
+  .avatar-btn{
+    background:var(--card2); border:1px solid var(--border); border-radius:50%;
+    width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:1.5rem; box-shadow:0 2px 10px rgba(0,0,0,0.4); line-height:1;
+  }
+  .avatar-btn:hover{ opacity:0.85; }
+  .avatar-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .avatar-grid button{
+    background:var(--card2); border:1px solid var(--border); border-radius:12px; font-size:1.7rem;
+    padding:10px 0; cursor:pointer; line-height:1;
+  }
+  .avatar-grid button:hover, .avatar-grid button.selected{ border-color:var(--blue); }
+
   /* Menu de conta flutuante (perfil / valores / sair) */
   .account-menu-wrap{ position:fixed; top:16px; right:16px; z-index:960; }
   .menu-btn{
     background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:50%;
-    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    width:50px; height:50px; display:flex; align-items:center; justify-content:center;
     cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.4);
   }
   .menu-btn:hover{ opacity:0.85; }
-  .menu-btn svg{ width:20px; height:20px; }
+  .menu-btn svg{ width:24px; height:24px; }
   .account-menu{
     position:absolute; top:52px; right:0; min-width:210px;
     background:var(--card); border:1px solid var(--border); border-radius:12px;
@@ -186,7 +201,7 @@
   /* Botão "ver maiores gastos" (só aparece no celular; no desktop a lista já fica sempre visível) */
   .top-despesas-toggle{ display:none; }
 
-  .home-greeting{ font-size:1.15rem; font-weight:700; margin:2px 0 10px; }
+  .home-greeting{ font-size:1rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .home-mes-picker{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:18px; }
   .home-mes-picker label{ color:var(--muted); font-size:0.8rem; font-weight:600; }
   .home-mes-picker input{ min-width:0; }
@@ -248,8 +263,8 @@
     body{ padding:12px 10px 20px; }
     h1{ font-size:1.3rem; }
     .sub{ font-size:0.78rem; }
-    .app-logo{ width:56px; height:56px; border-radius:15px; }
-    .login-card .app-logo{ width:52px; height:52px; border-radius:14px; }
+    .app-logo{ width:70px; height:70px; border-radius:18px; }
+    .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -311,8 +326,11 @@
     .bottom-nav-btn .bn-icon svg{ width:20px; height:20px; }
     .bottom-nav-btn .bn-label{ font-size:0.6rem; }
     .account-menu-wrap{ top:10px; right:10px; }
-    .menu-btn{ width:38px; height:38px; }
-    .menu-btn svg{ width:18px; height:18px; }
+    .menu-btn{ width:46px; height:46px; }
+    .menu-btn svg{ width:22px; height:22px; }
+    .perfil-wrap{ top:10px; left:10px; max-width:calc(100% - 130px); }
+    .avatar-btn{ width:46px; height:46px; font-size:1.35rem; }
+    .home-greeting{ font-size:0.9rem; }
   }
 </style>
 </head>
@@ -336,6 +354,23 @@
     </form>
     <div id="loginError"></div>
     <div id="logoutNotice"></div>
+  </div>
+</div>
+
+<div id="perfilWrap" class="perfil-wrap" style="display:none;">
+  <button id="avatarBtn" class="avatar-btn" onclick="abrirAvatarModal()" title="Editar foto">
+    <span id="avatarEmoji">🙂</span>
+  </button>
+  <div class="home-greeting" id="homeGreeting"></div>
+</div>
+
+<div id="avatarModal" class="modal-overlay" onclick="if(event.target===this) fecharAvatarModal()">
+  <div class="modal-card" style="max-width:360px;">
+    <div class="modal-header">
+      <h3>Escolha sua foto</h3>
+      <button class="secondary small" onclick="fecharAvatarModal()">Fechar</button>
+    </div>
+    <div class="avatar-grid" id="avatarGrid"></div>
   </div>
 </div>
 
@@ -484,7 +519,6 @@
 <div class="header-block">
   <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
   <span class="app-logo-name">Micelc</span>
-  <div class="home-greeting" id="homeGreeting"></div>
   <div class="sub">Registre sua movimentação do mês, e clique nos cards para visualizá-los.</div>
 </div>
 
@@ -834,6 +868,7 @@ function showLoading(){
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('accountMenuWrap').style.display = 'none';
+  document.getElementById('perfilWrap').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
 }
 function showLogin(){
@@ -842,6 +877,7 @@ function showLogin(){
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
   document.getElementById('accountMenuWrap').style.display = 'none';
+  document.getElementById('perfilWrap').style.display = 'none';
   document.body.classList.remove('has-bottom-nav');
   fecharLancamentos();
   fecharOrcamento();
@@ -860,6 +896,7 @@ function showApp(){
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('bottomNav').style.display = 'flex';
   document.getElementById('accountMenuWrap').style.display = 'block';
+  document.getElementById('perfilWrap').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
   mostrarView('homeView');
@@ -893,6 +930,28 @@ function primeiroNome(nomeCompleto){
 function atualizarSaudacao(){
   const nome = primeiroNome(data.perfilNome);
   document.getElementById('homeGreeting').textContent = nome ? 'Olá, ' + nome : '';
+  document.getElementById('avatarEmoji').textContent = data.perfilAvatar || '🙂';
+}
+
+// ---------- Foto de perfil (emoji, sem precisar de upload de arquivo) ----------
+const AVATARES_DISPONIVEIS = ['🙂','😀','😎','🤓','🥳','👦','👧','👨','👩','🧑','👴','👵','🦒','🐶','🐱','🦊','🐻','🐼','🦁','🐨','🐸','🦉','🐵','🐰'];
+
+function abrirAvatarModal(){
+  const grid = document.getElementById('avatarGrid');
+  grid.innerHTML = AVATARES_DISPONIVEIS.map(emoji => {
+    const selecionado = (data.perfilAvatar || '🙂') === emoji;
+    return `<button type="button" class="${selecionado ? 'selected' : ''}" onclick="escolherAvatar('${emoji}')">${emoji}</button>`;
+  }).join('');
+  document.getElementById('avatarModal').style.display = 'flex';
+}
+function fecharAvatarModal(){
+  document.getElementById('avatarModal').style.display = 'none';
+}
+function escolherAvatar(emoji){
+  data.perfilAvatar = emoji;
+  saveData();
+  atualizarSaudacao();
+  fecharAvatarModal();
 }
 
 function garantirNomePerfil(){
@@ -1430,6 +1489,13 @@ function iconeBancoHtml(nome){
   const banco = BANCOS_CONHECIDOS.find(b => nomeNormalizado.includes(b.chave.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
   if(!banco) return '';
   return `<span class="banco-badge" title="${nome}"><img src="icons/bancos/${banco.arquivo}" alt="${nome}"></span>`;
+}
+
+// Quando o nome bate com um banco conhecido, mostra s\u00f3 a logo (sem repetir o nome digitado);
+// caso contr\u00e1rio, mostra o texto normalmente.
+function nomeOuLogoHtml(nome){
+  const logo = iconeBancoHtml(nome);
+  return logo || (nome || '');
 }
 
 function categoriasBaseParaTipo(tipo){
@@ -2214,7 +2280,7 @@ function linhaLancamentoHtml(item){
       : 'info';
   let acoesExtra = '';
   if(item.tipo === 'divida' && Number(item.parcelas) > 0){
-    acoesExtra = `<button class="baixa" onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
+    acoesExtra = `<button class="baixa" onclick="baixarParcela('${item.id}')">Baixar</button>`;
   }
   return `
     <tr>
@@ -2408,7 +2474,7 @@ function renderRazaoContent(){
       resumoEl.innerHTML = '<div style="margin-bottom:10px;">' +
         cartoes.map(c => `
           <div class="list-item">
-            <div>${iconeBancoHtml(c.nome)}${c.nome} <span class="hint">(comprado ${fmt(c.totalComprado)} • pago ${fmt(c.totalPago)})</span></div>
+            <div>${nomeOuLogoHtml(c.nome)} <span class="hint">(comprado ${fmt(c.totalComprado)} • pago ${fmt(c.totalPago)})</span></div>
             <span class="warn">${fmt(c.total)}</span>
           </div>
         `).join('') + '</div>';
@@ -2667,7 +2733,7 @@ function renderDividas(){
         </div>
         <div class="actions">
           <span class="neg" style="margin-right:6px;">${fmt(d.valor)}</span>
-          ${quitada ? '<span class="quitada-tag">Quitada ✓</span>' : `<button class="baixa" onclick="baixarParcela('${d.id}')">Baixar parcela</button>`}
+          ${quitada ? '<span class="quitada-tag">Quitada ✓</span>' : `<button class="baixa" onclick="baixarParcela('${d.id}')">Baixar</button>`}
           <button class="edit" onclick="editLancamento('${d.id}')">Editar</button>
           <button class="danger" onclick="deleteLancamento('${d.id}')">x</button>
         </div>
@@ -2756,7 +2822,7 @@ function renderCartoesPanel(){
       return `
       <div class="list-item">
         <div>
-          <div>${iconeBancoHtml(c.nome)}${c.nome}</div>
+          <div>${nomeOuLogoHtml(c.nome)}</div>
           <div class="meta">${metaPartes.join(' • ')}</div>
         </div>
         <div class="actions">
