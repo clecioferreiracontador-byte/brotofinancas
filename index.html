@@ -317,10 +317,10 @@
     }
     .top-despesas-toggle{ display:inline-block; }
 
-    /* Painéis secundários (despesas por categoria, evolução, conta corrente, dívidas): ficam
+    /* Painéis secundários (despesas por categoria, receita x despesa, conta corrente, dívidas): ficam
        escondidos na Home e só abrem numa janela (#painelModal) ao tocar no emblema correspondente.
        Cartões e Pé de Meia continuam sempre visíveis, logo abaixo da fileira de emblemas. */
-    #panelDespesasCategoria, #panelReceitaDespesa, #panelEvolucao,
+    #panelDespesasCategoria, #panelReceitaDespesa,
     #panelConta, #panelDividas{ display:none; }
     .emblemas-row{ display:flex; gap:14px; overflow-x:auto; padding:4px 2px 12px; margin-bottom:6px; -webkit-overflow-scrolling:touch; }
 
@@ -538,10 +538,6 @@
     <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span>
     <span class="emblema-label">Receita x Despesa</span>
   </button>
-  <button class="emblema-btn" onclick="abrirPainelModal('panelEvolucao')">
-    <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg></span>
-    <span class="emblema-label">Evolução de Resultado</span>
-  </button>
   <button class="emblema-btn" onclick="abrirPainelModal('panelConta')">
     <span class="emblema-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9"/><path d="M3 19h18"/></svg></span>
     <span class="emblema-label">Conta Corrente</span>
@@ -595,11 +591,6 @@
   </div>
 </div>
 
-<div class="panel row-gap" id="panelEvolucao">
-  <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-8"/><path d="M15 7h5v5"/></svg></span> Evolução do Resultado Acumulado (mês selecionado)</span></h2>
-  <div class="panel-body"><div class="chart-box"><canvas id="chartSaldo"></canvas></div></div>
-</div>
-
 <div class="grid2 row-gap">
   <div class="panel" id="panelConta">
     <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9"/><path d="M3 19h18"/></svg></span> Conta Corrente</span>
@@ -640,7 +631,7 @@
   </div>
 </div>
 
-<footer>Dados sincronizados na nuvem (Firebase) com sua conta — acessíveis de qualquer aparelho logando com o mesmo e-mail.</footer>
+<footer>Dados sincronizados na nuvem (Firebase) com sua conta — acessíveis de qualquer aparelho logando com o mesmo e-mail e senha. Só você tem acesso às suas movimentações: seus dados são protegidos por senha e o sigilo das informações é mantido.</footer>
 
 </div>
 
@@ -2698,39 +2689,6 @@ function renderCharts(){
     }
   });
 
-  const diasNoMes = {};
-  mesItems.filter(l=>l.tipo==='receita'||l.tipo==='despesa').sort((a,b)=>a.data.localeCompare(b.data)).forEach(l => {
-    const dia = l.data;
-    const delta = l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor);
-    diasNoMes[dia] = (diasNoMes[dia]||0) + delta;
-  });
-  const diasOrdenados = Object.keys(diasNoMes).sort();
-  let acumulado = 0;
-  const acumuladoValores = diasOrdenados.map(d => { acumulado += diasNoMes[d]; return acumulado; });
-
-  if(charts.saldo) charts.saldo.destroy();
-  const ctxSaldo = document.getElementById('chartSaldo').getContext('2d');
-  charts.saldo = new Chart(ctxSaldo, {
-    type:'line',
-    data:{
-      labels: diasOrdenados.map(d => d.split('-').reverse().join('/')),
-      datasets:[{
-        label:'Resultado acumulado',
-        data: acumuladoValores,
-        borderColor:'#3b82f6',
-        backgroundColor:'rgba(59,130,246,0.15)',
-        fill:true, tension:0.25
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      scales:{
-        x:{ticks:{color:corGraficoMuted()}, grid:{color:corGraficoGrade()}},
-        y:{ticks:{color:corGraficoMuted()}, grid:{color:corGraficoGrade()}}
-      },
-      plugins:{ legend:{labels:{color:corGraficoTexto()}} }
-    }
-  });
 }
 
 function renderDividas(){
