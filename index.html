@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Micelc</title>
-<link rel="manifest" href="manifest.json?v=4">
-<link rel="icon" href="icons/icon-32.png?v=4" type="image/png" sizes="32x32">
-<link rel="icon" href="icons/icon-192.png?v=4" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="icons/icon-180.png?v=4">
-<meta name="apple-mobile-web-app-title" content="Micelc">
+<title>Broto</title>
+<link rel="manifest" href="manifest.json?v=5">
+<link rel="icon" href="icons/icon-32.png?v=5" type="image/png" sizes="32x32">
+<link rel="icon" href="icons/icon-192.png?v=5" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-180.png?v=5">
+<meta name="apple-mobile-web-app-title" content="Broto">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f172a">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -344,12 +344,12 @@
 </head>
 <body>
 
-<div id="loadingScreen"><img src="icons/icon-192.png" alt="Micelc" class="loading-logo"></div>
+<div id="loadingScreen"><img src="icons/icon-192.png" alt="Broto" class="loading-logo"></div>
 
 <div id="loginScreen">
   <div class="login-card">
-    <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
-    <span class="app-logo-name">Micelc</span>
+    <img src="icons/icon-192.png" alt="Broto" class="app-logo">
+    <span class="app-logo-name">Broto</span>
     <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
     <form id="loginForm">
       <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
@@ -516,8 +516,8 @@
 <div id="homeView">
 
 <div class="header-block">
-  <img src="icons/icon-192.png" alt="Micelc" class="app-logo">
-  <span class="app-logo-name">Micelc</span>
+  <img src="icons/icon-192.png" alt="Broto" class="app-logo">
+  <span class="app-logo-name">Broto</span>
   <div class="home-greeting" id="homeGreeting"></div>
   <div class="sub"></div>
 </div>
@@ -1356,7 +1356,7 @@ document.getElementById('logoutBtn').addEventListener('click', function(){
       deferredPrompt.prompt();
       deferredPrompt.userChoice.finally(function(){ deferredPrompt = null; });
     } else if(isIOS){
-      alert('Para instalar o app no iPhone:\n\n1. Toque no ícone de Compartilhar (□ com seta para cima) na barra do Safari.\n2. Escolha "Adicionar à Tela de Início".\n3. Toque em "Adicionar".\n\nO ícone do Micelc vai aparecer na tela inicial como um app.');
+      alert('Para instalar o app no iPhone:\n\n1. Toque no ícone de Compartilhar (□ com seta para cima) na barra do Safari.\n2. Escolha "Adicionar à Tela de Início".\n3. Toque em "Adicionar".\n\nO ícone do Broto vai aparecer na tela inicial como um app.');
     } else {
       alert('Para instalar: abra o menu do navegador (⋮ ou •••) e escolha "Instalar app" ou "Adicionar à tela inicial".');
     }
@@ -2059,7 +2059,7 @@ function abrirGoogleAgendaProvisao(id){
   const tipoLabel = p.tipo === 'receita' ? 'Receita' : 'Despesa';
   const titulo = 'Lembrete: ' + tipoLabel + ' ' + p.categoria + (p.descricao ? ' - ' + p.descricao : '') + ' (' + fmt(p.valor) + ')';
   const detalhes = 'Vence em ' + fmtDate(vencimentoBase) + '. Valor: ' + fmt(p.valor) + '. Categoria: ' + p.categoria +
-    (p.descricao ? '. ' + p.descricao : '') + '. Gerado pela Planilha Financeira Micelc.';
+    (p.descricao ? '. ' + p.descricao : '') + '. Gerado pela Planilha Financeira Broto.';
   const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&text=' + encodeURIComponent(titulo)
     + '&dates=' + toGCalDate(dataLembrete) + '/' + toGCalDate(dataFim)
