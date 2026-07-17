@@ -77,11 +77,11 @@
   .quitada-tag{background:rgba(34,197,94,0.15); color:var(--green); padding:2px 8px; border-radius:20px; font-size:0.72rem; font-weight:600;}
   .recorrente-tag{background:rgba(59,130,246,0.15); color:var(--blue); padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600;}
   .banco-badge{
-    display:inline-flex; align-items:center; justify-content:center; height:22px; max-width:56px;
-    border-radius:6px; background:var(--card2); border:1px solid var(--border); padding:2px 6px;
+    display:inline-flex; align-items:center; justify-content:center; width:44px; height:24px;
+    border-radius:6px; background:var(--card); border:1px solid var(--border); padding:2px 4px;
     margin-right:6px; flex-shrink:0; vertical-align:middle; overflow:hidden;
   }
-  .banco-badge img{ display:block; height:100%; width:auto; max-width:100%; object-fit:contain; }
+  .banco-badge img{ display:block; max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain; }
 
   table{width:100%; border-collapse:collapse; font-size:0.85rem;}
   th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
@@ -150,6 +150,17 @@
   .bottom-nav-btn .bn-icon{ display:flex; }
   .bottom-nav-btn .bn-icon svg{ width:22px; height:22px; }
   .bottom-nav-btn .bn-label{ font-size:0.66rem; font-weight:600; }
+
+  /* Destaque do botão Orçamento: continua no mesmo lugar da barra, só que maior e
+     com um círculo por cima, meio "flutuando" acima dos outros ícones. */
+  .bottom-nav-btn.destaque{ overflow:visible; }
+  .bottom-nav-btn.destaque .bn-icon{
+    background:var(--blue); color:#fff; border-radius:50%;
+    width:50px; height:50px; align-items:center; justify-content:center;
+    margin-top:-16px; box-shadow:0 4px 12px rgba(37,99,235,0.5); border:4px solid var(--card);
+  }
+  .bottom-nav-btn.destaque .bn-icon svg{ width:24px; height:24px; }
+  .bottom-nav-btn.destaque .bn-label{ font-weight:700; }
 
   /* Foto de perfil, no canto superior esquerdo (espelha o menu de conta à direita) */
   .perfil-wrap{ position:fixed; top:16px; left:16px; z-index:960; }
@@ -321,6 +332,8 @@
     body.has-bottom-nav{ padding-bottom:76px; }
     .bottom-nav-btn .bn-icon svg{ width:20px; height:20px; }
     .bottom-nav-btn .bn-label{ font-size:0.6rem; }
+    .bottom-nav-btn.destaque .bn-icon{ width:46px; height:46px; margin-top:-14px; }
+    .bottom-nav-btn.destaque .bn-icon svg{ width:22px; height:22px; }
     .account-menu-wrap{ top:10px; right:10px; }
     .menu-btn{ width:46px; height:46px; }
     .menu-btn svg{ width:22px; height:22px; }
@@ -399,7 +412,7 @@
     <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg></span>
     <span class="bn-label">Lançamentos</span>
   </button>
-  <button id="orcamentoIconBtn" class="bottom-nav-btn" onclick="abrirOrcamento()">
+  <button id="orcamentoIconBtn" class="bottom-nav-btn destaque" onclick="abrirOrcamento()">
     <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9V3z"/></svg></span>
     <span class="bn-label">Orçamento</span>
   </button>
