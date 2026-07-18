@@ -273,10 +273,25 @@
   .orc-total-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:16px;}
   .orc-bar-wrap{height:9px; background:var(--card2); border-radius:5px; overflow:hidden; margin-top:8px;}
   .orc-total-box .orc-bar-wrap{background:#0f172a;}
-  .orc-bar{height:100%; border-radius:5px; background:var(--green); transition:width .3s;}
+  .orc-bar{height:100%; border-radius:5px; background:var(--green); transition:width .3s; position:relative;}
   .orc-cat-row{margin-bottom:12px; font-size:0.8rem;}
   .orc-cat-row .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px;}
   .orc-cat-row .linha1 input{width:82px; padding:4px 6px; font-size:0.75rem; min-width:0;}
+
+  /* Pé de Meia: a barra de progresso "brota" uma folha na ponta, que cresce junto com a % atingida */
+  .meta-invest-box .orc-bar-wrap{ overflow:visible; }
+  .orc-bar-leaf{
+    position:absolute; top:50%; right:-7px; width:18px; height:18px;
+    transform:translateY(-55%); color:var(--green); pointer-events:none;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+    animation:leafPop .5s ease-out;
+  }
+  .orc-bar-leaf svg{ width:100%; height:100%; display:block; }
+  @keyframes leafPop{
+    0%{ transform:translateY(-55%) scale(0.3) rotate(-25deg); opacity:0; }
+    65%{ transform:translateY(-55%) scale(1.25) rotate(10deg); opacity:1; }
+    100%{ transform:translateY(-55%) scale(1) rotate(0deg); opacity:1; }
+  }
 
   .meta-invest-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;}
   .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
@@ -2974,6 +2989,10 @@ function renderDividas(){
   document.getElementById('dividasTotal').textContent = fmt(sumByTipo('divida'));
 }
 
+function folhaBarSvg(){
+  return '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7 4 4 8 4 13a8 8 0 0 0 8 8 8 8 0 0 0 8-8C20 8 17 4 12 2z"/><path d="M12 4v15" stroke="#fff" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.55"/></svg>';
+}
+
 function renderInvestimentos(){
   const metasEl = document.getElementById('metasInvestimentoList');
   const metas = metasInvestimentoAgrupadas();
@@ -2982,13 +3001,14 @@ function renderInvestimentos(){
   } else {
     metasEl.innerHTML = metas.map(m => {
       const corBarra = m.atingida ? 'var(--green)' : corBarraOrcamento(m.pct);
+      const folha = m.pct > 0 ? `<span class="orc-bar-leaf">${folhaBarSvg()}</span>` : '';
       return `
         <div class="meta-invest-box">
           <div class="linha1">
             <span>${m.atingida ? '🎉 ' : ''}${m.nome}</span>
             <button class="danger small" onclick="excluirMetaInvestimentoPorId('${m.id}')">Excluir</button>
           </div>
-          <div class="orc-bar-wrap"><div class="orc-bar" style="width:${m.pct}%; background:${corBarra};"></div></div>
+          <div class="orc-bar-wrap"><div class="orc-bar" style="width:${m.pct}%; background:${corBarra};">${folha}</div></div>
           <div class="linha2">
             <span class="blur-target">${fmt(m.valorAtual)} de ${fmt(m.valorMeta)}</span>
             <span>${m.atingida ? 'Meta atingida ✓' : m.pct.toFixed(0) + '%'}</span>
