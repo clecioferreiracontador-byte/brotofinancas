@@ -417,8 +417,8 @@
     <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
     <div class="hint" style="text-align:center; margin-bottom:14px;">Primeira vez aqui? Digite seu e-mail, escolha uma senha e toque em "Criar conta".</div>
     <form id="loginForm">
-      <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
-      <div class="field"><label>Senha</label><input type="password" id="loginSenha" required minlength="6"></div>
+      <div class="field"><label>E-mail</label><input type="email" id="loginEmail" name="email" autocomplete="username" required></div>
+      <div class="field"><label>Senha</label><input type="password" id="loginSenha" name="password" autocomplete="current-password" required minlength="6"></div>
       <button type="submit">Entrar</button>
       <button type="button" class="secondary" id="signupBtn">Criar conta</button>
       <button type="button" class="secondary" id="installAppBtnLogin" style="display:none; margin-top:8px;">
@@ -976,6 +976,7 @@ function showLogin(){
   closeNotifPanel();
   document.getElementById('loginForm').reset();
   document.getElementById('loginError').textContent = '';
+  const saiuDeProposito = logoutManual || logoutPorInatividade;
   document.getElementById('logoutNotice').textContent = logoutManual
     ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.'
     : (logoutPorInatividade ? 'Você ficou mais de 40 minutos inativo e foi desconectado por segurança. Entre novamente.' : '');
@@ -983,6 +984,9 @@ function showLogin(){
   logoutPorInatividade = false;
   if(inatividadeTimer) clearTimeout(inatividadeTimer);
   document.body.classList.remove('valores-ocultos');
+  // Só tenta login automático com credencial salva quando a tela de login aparece "do nada"
+  // (abertura normal do app) — nunca logo após a pessoa sair de propósito ou por inatividade.
+  if(!saiuDeProposito) tentarLoginComCredencialSalva();
 }
 function showApp(){
   const primeiraVez = document.getElementById('appScreen').style.display !== 'block';
@@ -1429,13 +1433,37 @@ auth.onAuthStateChanged(function(user){
   }
 });
 
+// Pede ao navegador para salvar o e-mail/senha (ex: Chrome, Android) para permitir login
+// automático depois, geralmente protegido por Face ID/impressão digital do próprio aparelho.
+function salvarCredencialNoNavegador(email, senha){
+  if(!window.PasswordCredential || !navigator.credentials) return;
+  try{
+    navigator.credentials.store(new PasswordCredential({ id: email, password: senha, name: email }));
+  }catch(e){}
+}
+
+// Ao carregar a tela de login, se o navegador já tiver uma credencial salva, tenta usá-la
+// (em aparelhos com biometria, o próprio navegador pode pedir Face ID/digital antes de liberá-la).
+function tentarLoginComCredencialSalva(){
+  if(!window.PasswordCredential || !navigator.credentials) return;
+  navigator.credentials.get({ password: true, mediation: 'optional' }).then(function(cred){
+    if(cred && cred.type === 'password' && cred.id && cred.password){
+      document.getElementById('loginEmail').value = cred.id;
+      document.getElementById('loginSenha').value = cred.password;
+      auth.signInWithEmailAndPassword(cred.id, cred.password).catch(function(){});
+    }
+  }).catch(function(){});
+}
+
 document.getElementById('loginForm').addEventListener('submit', function(e){
   e.preventDefault();
   document.getElementById('loginError').textContent = '';
   document.getElementById('logoutNotice').textContent = '';
   const email = document.getElementById('loginEmail').value.trim();
   const senha = document.getElementById('loginSenha').value;
-  auth.signInWithEmailAndPassword(email, senha).catch(function(err){
+  auth.signInWithEmailAndPassword(email, senha).then(function(){
+    salvarCredencialNoNavegador(email, senha);
+  }).catch(function(err){
     document.getElementById('loginError').textContent = traduzErroFirebase(err.code);
   });
 });
@@ -1448,7 +1476,9 @@ document.getElementById('signupBtn').addEventListener('click', function(){
     document.getElementById('loginError').textContent = 'Preencha e-mail e uma senha com pelo menos 6 caracteres.';
     return;
   }
-  auth.createUserWithEmailAndPassword(email, senha).catch(function(err){
+  auth.createUserWithEmailAndPassword(email, senha).then(function(){
+    salvarCredencialNoNavegador(email, senha);
+  }).catch(function(err){
     document.getElementById('loginError').textContent = traduzErroFirebase(err.code);
   });
 });
