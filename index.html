@@ -591,7 +591,7 @@
         <label>Descrição</label>
         <input type="text" id="provisaoDescricao" placeholder="opcional">
       </div>
-      <div class="field" style="flex-direction:row; align-items:center; gap:6px; min-width:auto;">
+      <div class="field" id="fieldProvisaoRepete" style="flex-direction:row; align-items:center; gap:6px; min-width:auto;">
         <input type="checkbox" id="provisaoRepete" style="min-width:auto; width:16px; height:16px;" onchange="toggleProvisaoRepeteField()">
         <label for="provisaoRepete" style="margin:0;">Se repete</label>
       </div>
@@ -604,7 +604,8 @@
         <input type="number" min="1" id="provisaoParcelas" placeholder="ex: 12">
         <span class="hint" id="provisaoParcelasInfo"></span>
       </div>
-      <button type="submit">Adicionar</button>
+      <button type="submit" id="provisaoSubmitBtn">Adicionar</button>
+      <button type="button" class="secondary" id="provisaoCancelBtn" style="display:none;">Cancelar edição</button>
     </form>
     <div class="totals-line" style="margin-top:14px;">
       <span>Receita prevista</span><span class="pos" id="provisaoTotalReceita">R$ 0,00</span>
@@ -1674,6 +1675,7 @@ function gerarVencimentosParaMeses(meses, vencimentoBase){
 let data = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
 let charts = {};
 let editingId = null;
+let editingProvisaoId = null;
 let razaoAtualKey = null;
 let razaoFiltroNome = null;
 
@@ -2377,10 +2379,9 @@ function renderProvisoes(){
     const btnExcluirSerie = p.recorrenciaId ? `<button class="row-menu-danger" onclick="excluirSerieProvisao('${p.recorrenciaId}')">Excluir série</button>` : '';
     const descricaoLimpa = (p.descricao || '').replace(/\s*\(parcela \d+\/\d+\)/, '').trim();
     const parcelaInfo = parcelaInfoProvisao(p);
-    const detalhe = [descricaoLimpa || null, parcelaInfo].filter(Boolean).join(' • ') || '-';
-    const tooltip = (p.categoria || '').replace(/"/g,'&quot;');
+    const detalhe = [p.categoria || null, descricaoLimpa || null, parcelaInfo].filter(Boolean).join(' • ') || '-';
     return `
-      <div class="list-item" title="${tooltip}">
+      <div class="list-item">
         <div>
           <div>${fmtDate(p.vencimento)} <span class="tag ${tag.cls}">${tag.label}</span></div>
           <div class="meta">${detalhe}</div>
@@ -2390,6 +2391,7 @@ function renderProvisoes(){
           <div class="row-menu-wrap">
             <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
             <div class="row-menu">
+              <button onclick="editarProvisao('${p.id}')">Editar lançamento</button>
               <button onclick="abrirGoogleAgendaProvisao('${p.id}')">📅 Lembrete no Google Agenda</button>
               <button onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
               <button class="row-menu-danger" onclick="excluirProvisao('${p.id}')">Excluir</button>
@@ -2407,6 +2409,36 @@ function excluirProvisao(id){
   saveData();
   renderProvisoes();
   renderFluxoCaixa();
+}
+
+// Edita uma provisão já existente (isolada — não reaplica repetição/parcelamento, só
+// atualiza os dados dela mesma).
+function editarProvisao(id){
+  const p = (data.provisoes || []).find(x => x.id === id);
+  if(!p) return;
+  editingProvisaoId = id;
+  document.getElementById('provisaoTipo').value = p.tipo;
+  populateProvisaoCategoriaSelect();
+  document.getElementById('provisaoCategoria').value = p.categoria || '';
+  document.getElementById('provisaoValor').value = p.valor;
+  document.getElementById('provisaoDescricao').value = p.descricao || '';
+  document.getElementById('provisaoVencimento').value = p.vencimento || '';
+  document.getElementById('provisaoRepete').checked = false;
+  document.getElementById('provisaoRepeteAte').value = '';
+  document.getElementById('provisaoParcelas').value = '';
+  toggleProvisaoRepeteField();
+  document.getElementById('fieldProvisaoRepete').style.display = 'none';
+  document.getElementById('provisaoSubmitBtn').textContent = 'Salvar alteração';
+  document.getElementById('provisaoCancelBtn').style.display = 'inline-block';
+}
+
+function cancelEditProvisao(){
+  editingProvisaoId = null;
+  document.getElementById('provisaoForm').reset();
+  document.getElementById('fieldProvisaoRepete').style.display = '';
+  toggleProvisaoRepeteField();
+  document.getElementById('provisaoSubmitBtn').textContent = 'Adicionar';
+  document.getElementById('provisaoCancelBtn').style.display = 'none';
 }
 
 function excluirSerieProvisao(recorrenciaId){
@@ -2480,7 +2512,14 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   const cartaoCredito = isProvisaoCartaoCredito();
   const numParcelas = parseInt(document.getElementById('provisaoParcelas').value) || 0;
 
-  if(repete && cartaoCredito && numParcelas > 1){
+  if(editingProvisaoId){
+    const p = (data.provisoes || []).find(x => x.id === editingProvisaoId);
+    if(p) Object.assign(p, { mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput });
+    editingProvisaoId = null;
+    document.getElementById('fieldProvisaoRepete').style.display = '';
+    document.getElementById('provisaoSubmitBtn').textContent = 'Adicionar';
+    document.getElementById('provisaoCancelBtn').style.display = 'none';
+  } else if(repete && cartaoCredito && numParcelas > 1){
     const recorrenciaId = uid();
     const meses = gerarMesesQtd(mes, numParcelas);
     const vencimentos = gerarVencimentosParaMeses(meses, vencimentoInput);
@@ -2510,6 +2549,7 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   renderProvisoes();
   renderFluxoCaixa();
 });
+document.getElementById('provisaoCancelBtn').addEventListener('click', cancelEditProvisao);
 
 // ---------- Fluxo de Caixa Projetado (lançamentos do mês + provisões futuras) ----------
 // Parcelas de cartão já lançadas para meses futuros (ex: compra em 3x) ainda não entram no
