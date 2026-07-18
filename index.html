@@ -39,6 +39,18 @@
   .app-logo{display:block; margin:0 auto 8px; width:96px; height:96px; border-radius:24px; box-shadow:0 8px 24px rgba(0,0,0,0.45);}
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
+  .home-banner{
+    background:#ffffff; border-radius:28px; padding:22px 20px 16px; overflow:hidden;
+    box-shadow:0 6px 20px rgba(0,0,0,0.18);
+  }
+  .home-banner-watermark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-weight:800; font-size:2.8rem; letter-spacing:.1em; text-transform:uppercase;
+    color:rgba(21,128,61,0.09); white-space:nowrap; pointer-events:none; z-index:0;
+  }
+  .home-banner .app-logo{ position:relative; z-index:1; }
+  .home-banner .home-greeting{ position:relative; z-index:1; color:#0f172a; }
+  .home-banner .sub{ position:relative; z-index:1; color:#64748b; }
   .sub{color:var(--muted); font-size:0.9rem;}
   .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;}
@@ -135,6 +147,8 @@
   }
   .modal-close-btn:hover{ background:rgba(255,255,255,0.08); color:var(--text); }
   .modal-close-btn svg{ width:20px; height:20px; }
+  .modal-header-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .mini-cal-input{ min-width:0; width:130px; height:32px; padding:4px 8px; font-size:0.78rem; }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
@@ -234,9 +248,6 @@
   .top-despesas-toggle{ display:none; }
 
   .home-greeting{ font-size:1.15rem; font-weight:700; margin:2px 0 10px; }
-  .home-mes-picker{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:18px; }
-  .home-mes-picker label{ color:var(--muted); font-size:0.8rem; font-weight:600; }
-  .home-mes-picker input{ min-width:0; }
 
   /* Fileira horizontal de emblemas (só aparece no celular — ver media query mais abaixo).
      No desktop os painéis completos continuam sempre visíveis, sem essa fileira. */
@@ -297,6 +308,8 @@
     .sub{ font-size:0.78rem; }
     .app-logo{ width:70px; height:70px; border-radius:18px; }
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
+    .home-banner{ border-radius:22px; padding:18px 14px 14px; }
+    .home-banner-watermark{ font-size:1.9rem; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -356,6 +369,7 @@
     .modal-card, .page-view .view-card{ padding:14px; }
     .modal-card{ max-height:88vh; }
     .modal-header h3{ font-size:0.92rem; }
+    .mini-cal-input{ width:104px; font-size:0.72rem; padding:4px 6px; }
 
     body.has-bottom-nav{ padding-bottom:76px; }
     .bottom-nav-btn .bn-icon svg{ width:20px; height:20px; }
@@ -558,16 +572,11 @@
 
 <div id="homeView">
 
-<div class="header-block">
+<div class="header-block home-banner">
+  <span class="home-banner-watermark">Broto</span>
   <img src="icons/icon-192.png" alt="Broto" class="app-logo">
-  <span class="app-logo-name">Broto</span>
   <div class="home-greeting" id="homeGreeting"></div>
   <div class="sub"></div>
-</div>
-
-<div class="home-mes-picker">
-  <label for="filtroMesHome">Mês</label>
-  <input type="month" id="filtroMesHome" onchange="mudarFiltroMes(this.value)">
 </div>
 
 <div class="cards" id="summaryCards"></div>
@@ -831,9 +840,12 @@
   <div class="modal-card" style="max-width:640px;">
     <div class="modal-header">
       <h3>Detalhes</h3>
-      <button class="modal-close-btn" onclick="fecharPainelModal()" title="Fechar" aria-label="Fechar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
-      </button>
+      <div class="modal-header-right">
+        <input type="month" id="filtroMesHome" class="mini-cal-input" title="Ver movimentação de outro mês" onchange="mudarFiltroMes(this.value)">
+        <button class="modal-close-btn" onclick="fecharPainelModal()" title="Fechar" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
     </div>
     <div id="painelModalBody"></div>
   </div>
