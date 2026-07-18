@@ -531,7 +531,7 @@
       <button class="secondary small" onclick="irHome()">Voltar</button>
     </div>
     <div class="month-filter">
-      <label style="color:var(--muted); font-size:0.85rem;">Mês da provisão:</label>
+      <label style="color:var(--muted); font-size:0.85rem;">Mês de referência (filtra a lista abaixo):</label>
       <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
     </div>
     <form class="inline" id="provisaoForm">
@@ -555,9 +555,8 @@
         <input type="text" id="provisaoDescricao" placeholder="opcional">
       </div>
       <div class="field">
-        <label>Dia de vencimento</label>
-        <input type="date" id="provisaoVencimento">
-        <span class="hint">dentro do mês escolhido acima</span>
+        <label>Vencimento</label>
+        <input type="date" id="provisaoVencimento" required>
       </div>
       <div class="field" style="flex-direction:row; align-items:center; gap:6px; min-width:auto;">
         <input type="checkbox" id="provisaoRepete" style="min-width:auto; width:16px; height:16px;" onchange="toggleProvisaoRepeteField()">
@@ -2175,29 +2174,10 @@ function abrirProvisoes(){
     document.getElementById('provisaoMesInput').value = nextMonthKeyFromToday();
   }
   populateProvisaoCategoriaSelect();
-  atualizarLimitesVencimentoProvisao();
   renderProvisoes();
 }
 function fecharProvisoes(){
   mostrarView('homeView');
-}
-
-// Mantém o campo "Dia de vencimento" restrito aos dias do mês selecionado acima (ex: agosto 01 a 31).
-function atualizarLimitesVencimentoProvisao(){
-  const mes = document.getElementById('provisaoMesInput').value;
-  const input = document.getElementById('provisaoVencimento');
-  if(!mes){
-    input.removeAttribute('min');
-    input.removeAttribute('max');
-    return;
-  }
-  const partes = mes.split('-').map(Number);
-  const lastDay = new Date(partes[0], partes[1], 0).getDate();
-  const min = mes + '-01';
-  const max = mes + '-' + String(lastDay).padStart(2,'0');
-  input.min = min;
-  input.max = max;
-  if(input.value && (input.value < min || input.value > max)) input.value = '';
 }
 
 function isProvisaoCartaoCredito(){
@@ -2215,7 +2195,8 @@ function toggleProvisaoRepeteField(){
 
 function atualizarProvisaoParcelasInfo(){
   const info = document.getElementById('provisaoParcelasInfo');
-  const mes = document.getElementById('provisaoMesInput').value;
+  const vencimento = document.getElementById('provisaoVencimento').value;
+  const mes = vencimento ? vencimento.slice(0,7) : '';
   const parcelas = parseInt(document.getElementById('provisaoParcelas').value) || 0;
   if(mes && parcelas > 1){
     const meses = gerarMesesQtd(mes, parcelas);
@@ -2341,14 +2322,12 @@ document.getElementById('provisaoTipo').addEventListener('change', function(){
 });
 document.getElementById('provisaoCategoria').addEventListener('change', toggleProvisaoRepeteField);
 document.getElementById('provisaoParcelas').addEventListener('input', atualizarProvisaoParcelasInfo);
-document.getElementById('provisaoMesInput').addEventListener('change', function(){
-  atualizarProvisaoParcelasInfo();
-  atualizarLimitesVencimentoProvisao();
-});
+document.getElementById('provisaoVencimento').addEventListener('change', atualizarProvisaoParcelasInfo);
 document.getElementById('provisaoForm').addEventListener('submit', function(e){
   e.preventDefault();
-  const mes = document.getElementById('provisaoMesInput').value;
-  if(!mes) return;
+  const vencimentoInput = document.getElementById('provisaoVencimento').value;
+  if(!vencimentoInput) return;
+  const mes = vencimentoInput.slice(0,7);
   const valor = parseFloat(document.getElementById('provisaoValor').value) || 0;
   if(valor <= 0) return;
   if(!data.provisoes) data.provisoes = [];
@@ -2356,7 +2335,6 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   const tipo = document.getElementById('provisaoTipo').value;
   const categoria = document.getElementById('provisaoCategoria').value;
   const descricao = document.getElementById('provisaoDescricao').value.trim();
-  const vencimentoInput = document.getElementById('provisaoVencimento').value;
   const repete = document.getElementById('provisaoRepete').checked;
   const repeteAte = document.getElementById('provisaoRepeteAte').value;
   const cartaoCredito = isProvisaoCartaoCredito();
@@ -2365,8 +2343,7 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   if(repete && cartaoCredito && numParcelas > 1){
     const recorrenciaId = uid();
     const meses = gerarMesesQtd(mes, numParcelas);
-    const vencimentoBase = vencimentoInput || (mes + '-01');
-    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoBase);
+    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoInput);
     meses.forEach((mk, idx) => {
       const descParcela = (descricao ? descricao + ' ' : '') + `(parcela ${idx + 1}/${numParcelas})`;
       data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao: descParcela, vencimento: vencimentos[idx], recorrenciaId });
@@ -2374,19 +2351,18 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   } else if(repete && !cartaoCredito && repeteAte && repeteAte > mes){
     const recorrenciaId = uid();
     const meses = gerarMesesEntre(mes, repeteAte);
-    const vencimentoBase = vencimentoInput || (mes + '-01');
-    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoBase);
+    const vencimentos = gerarVencimentosParaMeses(meses, vencimentoInput);
     meses.forEach((mk, idx) => {
       data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao, vencimento: vencimentos[idx], recorrenciaId });
     });
   } else {
-    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput || null, recorrenciaId: null });
+    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput, recorrenciaId: null });
   }
 
   saveData();
+  document.getElementById('provisaoMesInput').value = mes;
   document.getElementById('provisaoValor').value = '';
   document.getElementById('provisaoDescricao').value = '';
-  document.getElementById('provisaoVencimento').value = '';
   document.getElementById('provisaoRepete').checked = false;
   document.getElementById('provisaoRepeteAte').value = '';
   document.getElementById('provisaoParcelas').value = '';
