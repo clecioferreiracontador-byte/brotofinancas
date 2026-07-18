@@ -927,6 +927,7 @@ function showLogin(){
   document.body.classList.remove('valores-ocultos');
 }
 function showApp(){
+  const primeiraVez = document.getElementById('appScreen').style.display !== 'block';
   document.getElementById('loadingScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
@@ -936,7 +937,7 @@ function showApp(){
   document.getElementById('notifWrap').style.display = 'block';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
-  mostrarView('homeView');
+  if(primeiraVez) mostrarView('homeView');
 }
 
 function toggleAccountMenu(){
