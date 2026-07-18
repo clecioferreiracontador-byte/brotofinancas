@@ -335,6 +335,27 @@
   .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
   .meta-invest-box .linha2{display:flex; justify-content:space-between; margin-top:6px; font-size:0.76rem; color:var(--muted);}
 
+  /* Quadrinho de Saúde Financeira (score), entre Cartões e Pé de Meia na Home */
+  .score-mini-card{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:border-color .15s; gap:10px; }
+  .score-mini-card:hover{ border-color:var(--blue); }
+  .score-mini-left{ display:flex; align-items:center; gap:10px; }
+  .score-mini-title{ font-weight:600; font-size:0.95rem; }
+  .score-mini-value{ font-size:1.4rem; font-weight:800; flex-shrink:0; }
+
+  /* Modal de detalhe do score: abas Hoje/Mês/3 meses + medidor circular + estatísticas */
+  .score-tabs{ display:flex; background:var(--card2); border-radius:10px; padding:4px; gap:4px; margin-bottom:18px; }
+  .score-tab{ flex:1; background:none; border:none; color:var(--muted); padding:8px 6px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; }
+  .score-tab.active{ background:var(--card); color:var(--text); }
+  .score-gauge-wrap{ position:relative; max-width:260px; margin:0 auto; }
+  .score-gauge-svg{ width:100%; display:block; }
+  .score-gauge-value{ position:absolute; left:0; right:0; bottom:6px; text-align:center; }
+  .score-gauge-value #scoreValorGrande{ font-size:2.2rem; font-weight:800; line-height:1; }
+  .score-rotulo{ text-align:center; font-weight:700; margin-top:4px; }
+  .score-dica{ display:flex; gap:8px; background:var(--card2); border-radius:10px; padding:10px 12px; margin-top:14px; font-size:0.82rem; }
+  .score-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px; }
+  .score-stats > div{ background:var(--card2); border-radius:10px; padding:10px; text-align:center; }
+  .score-stats .hint{ margin-bottom:2px; }
+
   .conta-forma-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;}
   .conta-forma-box .label{color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:.03em;}
   .conta-forma-box .value{font-size:1.1rem; font-weight:700; margin-top:4px;}
@@ -667,6 +688,17 @@
   </div>
 </div>
 
+<div class="panel row-gap score-mini-card" id="panelScoreFinanceiro" onclick="abrirScoreFinanceiro()">
+  <div class="score-mini-left">
+    <span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 15.5 8.5"/><path d="M12 3v1.5M21 12h-1.5M3 12h1.5M18.36 5.64l-1.06 1.06M5.64 5.64l1.06 1.06"/></svg></span>
+    <div>
+      <div class="score-mini-title">Saúde financeira</div>
+      <div class="hint">Toque para ver o resumo</div>
+    </div>
+  </div>
+  <div class="score-mini-value" id="scoreFinanceiroMiniValor">-- /100</div>
+</div>
+
 <div class="panel row-gap" id="panelInvestimentos">
   <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V12"/><path d="M12 12C12 8 9 6 6 6c0 4 2 6 6 6z"/><path d="M12 12c0-5 3-8 7-8 0 5-3 8-7 8z"/></svg></span> Pé de Meia</span>
     <span class="h2-actions">
@@ -926,6 +958,42 @@
       </table>
     </div>
     <div class="totals-line"><span id="razaoTotalLabel">Total</span><span id="razaoTotal" class="blur-target">R$ 0,00</span></div>
+  </div>
+</div>
+
+<div id="scoreModal" class="modal-overlay" onclick="if(event.target===this) fecharScoreFinanceiro()">
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Saúde financeira</h3>
+      <button class="modal-close-btn" onclick="fecharScoreFinanceiro()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="score-tabs">
+      <button type="button" class="score-tab active" data-periodo="hoje" onclick="mudarPeriodoScore('hoje')">Hoje</button>
+      <button type="button" class="score-tab" data-periodo="mes" onclick="mudarPeriodoScore('mes')">Mês</button>
+      <button type="button" class="score-tab" data-periodo="3meses" onclick="mudarPeriodoScore('3meses')">3 meses</button>
+    </div>
+    <div class="score-gauge-wrap">
+      <svg viewBox="0 0 200 116" class="score-gauge-svg">
+        <path d="M20,110 A80,80 0 0,1 180,110" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
+        <path id="scoreGaugeArc" d="M20,110 A80,80 0 0,1 180,110" fill="none" stroke="#eab308" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 999"/>
+      </svg>
+      <div class="score-gauge-value">
+        <div id="scoreValorGrande">50</div>
+        <div class="hint">de 100</div>
+      </div>
+    </div>
+    <div id="scoreRotulo" class="score-rotulo">Saúde financeira razoável</div>
+    <div id="scoreMensagem" class="hint" style="text-align:center; margin-top:4px;"></div>
+    <div class="score-dica" id="scoreDicaBox" style="display:none;">
+      <span>✦</span> <span id="scoreDicaTexto"></span>
+    </div>
+    <div class="score-stats">
+      <div><div class="hint">Entradas</div><div class="pos blur-target" id="scoreEntradas">R$ 0,00</div></div>
+      <div><div class="hint">Saídas</div><div class="neg blur-target" id="scoreSaidas">R$ 0,00</div></div>
+      <div><div class="hint">Resultado</div><div class="blur-target" id="scoreResultado">R$ 0,00</div></div>
+    </div>
   </div>
 </div>
 
@@ -1857,6 +1925,36 @@ function excluirMetaInvestimentoPorId(id){
   renderInvestimentos();
 }
 
+// Edição simples (via prompt), sem precisar abrir a tela de Lançamentos — mantém o
+// vínculo com os lançamentos já existentes mesmo se o nome da meta mudar.
+function editarMetaInvestimentoPorId(id){
+  const meta = (data.metasInvestimento || []).find(m => m.id === id);
+  if(!meta) return;
+  const novoNome = prompt('Nome da meta:', meta.nome);
+  if(novoNome === null) return;
+  const novoNomeTrim = novoNome.trim();
+  if(!novoNomeTrim) return;
+  if(novoNomeTrim !== meta.nome && data.metasInvestimento.some(m => m.nome === novoNomeTrim)){
+    alert('Já existe uma meta com esse nome.');
+    return;
+  }
+  const novoValorTexto = prompt('Valor da meta "' + novoNomeTrim + '" (R$):', String(meta.valorMeta));
+  if(novoValorTexto === null) return;
+  const novoValor = parseFloat(String(novoValorTexto).replace(',', '.')) || 0;
+  if(novoValor <= 0){
+    alert('Informe um valor de meta maior que zero.');
+    return;
+  }
+  if(novoNomeTrim !== meta.nome){
+    data.lancamentos.forEach(l => { if(l.tipo === 'investimento' && l.meta === meta.nome) l.meta = novoNomeTrim; });
+  }
+  meta.nome = novoNomeTrim;
+  meta.valorMeta = novoValor;
+  saveData();
+  populateMetaInvestimentoSelect();
+  renderInvestimentos();
+}
+
 function metasInvestimentoAgrupadas(){
   const metas = data.metasInvestimento || [];
   return metas.map(m => {
@@ -2084,10 +2182,11 @@ function diasAteData(dataStr){
   return Math.round((d2 - d1) / 86400000);
 }
 
-function textoVencimento(dias, rotulo){
-  if(dias < 0) return `${rotulo} vencida`;
-  if(dias === 0) return `${rotulo} vence hoje`;
-  return `${rotulo} vence em ${dias} dia${dias === 1 ? '' : 's'}`;
+function textoVencimento(dias, rotulo, dataVencimento){
+  const dataFmt = dataVencimento ? ' (' + fmtDate(dataVencimento) + ')' : '';
+  if(dias < 0) return `${rotulo} vencida${dataFmt}`;
+  if(dias === 0) return `${rotulo} vence hoje${dataFmt}`;
+  return `${rotulo} vence em ${dias} dia${dias === 1 ? '' : 's'}${dataFmt}`;
 }
 
 function calcularAlertas(){
@@ -2097,7 +2196,7 @@ function calcularAlertas(){
     if(c.total > 0 && c.vencimento){
       const dias = diasAteData(c.vencimento);
       if(dias <= NOTIF_DIAS_ANTECEDENCIA){
-        alertas.push({ texto: `${textoVencimento(dias, 'Fatura')} — ${c.nome} (${fmt(c.total)})`, urgente: dias < 0 });
+        alertas.push({ texto: `${textoVencimento(dias, 'Fatura', c.vencimento)} — ${c.nome} (${fmt(c.total)})`, urgente: dias < 0 });
       }
     }
   });
@@ -2105,7 +2204,7 @@ function calcularAlertas(){
   data.lancamentos.filter(l => l.tipo === 'divida' && Number(l.parcelas) > 0 && l.vencimento).forEach(l => {
     const dias = diasAteData(l.vencimento);
     if(dias <= NOTIF_DIAS_ANTECEDENCIA){
-      alertas.push({ texto: `${textoVencimento(dias, 'Parcela')} — ${l.descricao || 'Dívida'} (${fmt(l.valor)})`, urgente: dias < 0 });
+      alertas.push({ texto: `${textoVencimento(dias, 'Parcela', l.vencimento)} — ${l.descricao || 'Dívida'} (${fmt(l.valor)})`, urgente: dias < 0 });
     }
   });
 
@@ -2114,7 +2213,7 @@ function calcularAlertas(){
       const dias = diasAteData(p.vencimento);
       if(dias <= NOTIF_DIAS_ANTECEDENCIA){
         const rotulo = p.tipo === 'receita' ? 'Receita prevista' : 'Despesa prevista';
-        alertas.push({ texto: `${textoVencimento(dias, rotulo)} — ${p.categoria} (${fmt(p.valor)})`, urgente: dias < 0 });
+        alertas.push({ texto: `${textoVencimento(dias, rotulo, p.vencimento)} — ${p.categoria} (${fmt(p.valor)})`, urgente: dias < 0 });
       }
     }
   });
@@ -2155,6 +2254,124 @@ function renderNotificacoes(){
   } else {
     list.innerHTML = alertas.map(a => `<div class="notif-item ${a.urgente ? 'urgente' : ''}">${a.texto}</div>`).join('');
   }
+}
+
+// ---------- Score de Saúde Financeira (estilo "Serasa"), calculado a partir dos lançamentos ----------
+let scorePeriodoAtual = 'hoje';
+
+function intervaloScorePeriodo(periodo){
+  const hoje = new Date().toISOString().slice(0,10);
+  if(periodo === 'hoje') return { inicio: hoje, fim: hoje };
+  if(periodo === 'mes') return { inicio: hoje.slice(0,7) + '-01', fim: hoje };
+  const d = new Date();
+  d.setMonth(d.getMonth() - 2);
+  return { inicio: d.toISOString().slice(0,7) + '-01', fim: hoje };
+}
+
+// Score simples e explicável: parte de uma base neutra (50), soma/subtrai conforme a taxa de
+// poupança do período (entradas x saídas) e desconta um pouco se houver dívidas em aberto
+// relevantes perto da renda do período.
+function calcularScoreFinanceiro(periodo){
+  const { inicio, fim } = intervaloScorePeriodo(periodo);
+  const itens = data.lancamentos.filter(l => (l.tipo === 'receita' || l.tipo === 'despesa') && l.data >= inicio && l.data <= fim);
+  const entradas = itens.filter(l => l.tipo === 'receita').reduce((s,l) => s + Number(l.valor), 0);
+  const saidas = itens.filter(l => l.tipo === 'despesa').reduce((s,l) => s + Number(l.valor), 0);
+  const resultado = entradas - saidas;
+
+  if(entradas === 0 && saidas === 0){
+    return { score: 50, entradas, saidas, resultado, semMovimentacao: true };
+  }
+
+  let score = 50;
+  if(entradas > 0){
+    const taxaPoupanca = resultado / entradas;
+    score += Math.max(-40, Math.min(40, taxaPoupanca * 80));
+  } else {
+    score -= 30;
+  }
+
+  const totalDividas = sumByTipo('divida');
+  if(totalDividas > 0 && entradas > 0){
+    score -= Math.min(20, (totalDividas / entradas) * 10);
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  return { score, entradas, saidas, resultado, semMovimentacao: false };
+}
+
+function rotuloScore(score){
+  if(score >= 80) return 'Saúde financeira ótima';
+  if(score >= 60) return 'Saúde financeira boa';
+  if(score >= 40) return 'Saúde financeira razoável';
+  if(score >= 20) return 'Saúde financeira fraca';
+  return 'Saúde financeira crítica';
+}
+
+function corScore(score){
+  if(score >= 70) return '#22c55e';
+  if(score >= 40) return '#eab308';
+  return '#ef4444';
+}
+
+function renderScoreFinanceiroMini(){
+  const r = calcularScoreFinanceiro('mes');
+  const el = document.getElementById('scoreFinanceiroMiniValor');
+  el.textContent = r.score + '/100';
+  el.style.color = corScore(r.score);
+}
+
+function abrirScoreFinanceiro(){
+  document.getElementById('scoreModal').style.display = 'flex';
+  mudarPeriodoScore(scorePeriodoAtual);
+}
+function fecharScoreFinanceiro(){
+  document.getElementById('scoreModal').style.display = 'none';
+}
+function mudarPeriodoScore(periodo){
+  scorePeriodoAtual = periodo;
+  document.querySelectorAll('.score-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.periodo === periodo);
+  });
+  renderScoreFinanceiroDetalhe();
+}
+
+const SCORE_ARCO_COMPRIMENTO = Math.PI * 80; // o path do medidor é um semicírculo de raio 80
+
+function renderScoreFinanceiroDetalhe(){
+  const r = calcularScoreFinanceiro(scorePeriodoAtual);
+  const cor = corScore(r.score);
+  document.getElementById('scoreValorGrande').textContent = r.score;
+  const arco = document.getElementById('scoreGaugeArc');
+  arco.setAttribute('stroke', cor);
+  arco.setAttribute('stroke-dasharray', (SCORE_ARCO_COMPRIMENTO * r.score / 100).toFixed(1) + ' 999');
+  const rotuloEl = document.getElementById('scoreRotulo');
+  rotuloEl.textContent = rotuloScore(r.score);
+  rotuloEl.style.color = cor;
+
+  const mensagemEl = document.getElementById('scoreMensagem');
+  const dicaBox = document.getElementById('scoreDicaBox');
+  if(r.semMovimentacao){
+    mensagemEl.textContent = 'Nenhuma movimentação financeira foi detectada no período atual.';
+    document.getElementById('scoreDicaTexto').textContent = 'Reveja suas despesas assim que possuam alguma movimentação.';
+    dicaBox.style.display = 'flex';
+  } else if(r.resultado < 0){
+    mensagemEl.textContent = '';
+    document.getElementById('scoreDicaTexto').textContent = 'Suas saídas superaram as entradas no período — reveja despesas para equilibrar o resultado.';
+    dicaBox.style.display = 'flex';
+  } else if(sumByTipo('divida') > 0){
+    mensagemEl.textContent = '';
+    document.getElementById('scoreDicaTexto').textContent = 'Você tem dívidas em aberto — quitá-las ajuda a melhorar sua saúde financeira.';
+    dicaBox.style.display = 'flex';
+  } else {
+    mensagemEl.textContent = '';
+    dicaBox.style.display = 'none';
+  }
+
+  document.getElementById('scoreEntradas').textContent = fmt(r.entradas);
+  document.getElementById('scoreSaidas').textContent = fmt(r.saidas);
+  const resultadoEl = document.getElementById('scoreResultado');
+  resultadoEl.textContent = fmt(r.resultado);
+  resultadoEl.className = 'blur-target ' + (r.resultado >= 0 ? 'pos' : 'neg');
 }
 
 function salvarOrcamentoTotal(valor){
@@ -2648,8 +2865,10 @@ function renderAll(){
   renderCartoesPanel();
   renderFluxoCaixa();
   renderNotificacoes();
+  renderScoreFinanceiroMini();
   if(document.getElementById('orcamentoModal').style.display === 'block') renderOrcamento();
   if(razaoAtualKey) renderRazaoContent();
+  if(document.getElementById('scoreModal').style.display === 'flex') renderScoreFinanceiroDetalhe();
 }
 
 function renderSummary(){
@@ -3195,7 +3414,13 @@ function renderInvestimentos(){
         <div class="meta-invest-box clickable" onclick="abrirRazao('investimento', '${nomeEscapado}')" title="Ver e editar os lançamentos desta meta">
           <div class="linha1">
             <span>${m.atingida ? '🎉 ' : ''}${m.nome}</span>
-            <button class="cartao-acao" onclick="event.stopPropagation(); excluirMetaInvestimentoPorId('${m.id}')" title="Excluir meta">x</button>
+            <div class="row-menu-wrap" onclick="event.stopPropagation();">
+              <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+              <div class="row-menu">
+                <button onclick="editarMetaInvestimentoPorId('${m.id}')">Editar</button>
+                <button class="row-menu-danger" onclick="excluirMetaInvestimentoPorId('${m.id}')">Excluir</button>
+              </div>
+            </div>
           </div>
           <div class="orc-bar-wrap"><div class="orc-bar" style="width:${m.pct}%; background:${corBarra};">${folha}</div></div>
           <div class="linha2">
