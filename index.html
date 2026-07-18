@@ -415,6 +415,7 @@
     <img src="icons/icon-192.png" alt="Broto" class="app-logo">
     <span class="app-logo-name">Broto</span>
     <div class="sub">Entre com e-mail e senha para acessar seus dados de qualquer aparelho.</div>
+    <div class="hint" style="text-align:center; margin-bottom:14px;">Primeira vez aqui? Digite seu e-mail, escolha uma senha e toque em "Criar conta".</div>
     <form id="loginForm">
       <div class="field"><label>E-mail</label><input type="email" id="loginEmail" required></div>
       <div class="field"><label>Senha</label><input type="password" id="loginSenha" required minlength="6"></div>
@@ -916,7 +917,23 @@ const db = firebase.firestore();
 let docRef = null;
 let unsubscribeSnapshot = null;
 let logoutManual = false;
+let logoutPorInatividade = false;
 const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
+
+// Desloga automaticamente após 40 minutos sem nenhuma interação, por segurança.
+const INATIVIDADE_LIMITE_MS = 40 * 60 * 1000;
+let inatividadeTimer = null;
+function resetInatividadeTimer(){
+  if(inatividadeTimer) clearTimeout(inatividadeTimer);
+  if(!auth.currentUser) return;
+  inatividadeTimer = setTimeout(function(){
+    logoutPorInatividade = true;
+    auth.signOut();
+  }, INATIVIDADE_LIMITE_MS);
+}
+['mousemove','keydown','touchstart','click','scroll'].forEach(function(evt){
+  document.addEventListener(evt, resetInatividadeTimer, {passive:true});
+});
 
 function traduzErroFirebase(code){
   const mapa = {
@@ -959,8 +976,12 @@ function showLogin(){
   closeNotifPanel();
   document.getElementById('loginForm').reset();
   document.getElementById('loginError').textContent = '';
-  document.getElementById('logoutNotice').textContent = logoutManual ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.' : '';
+  document.getElementById('logoutNotice').textContent = logoutManual
+    ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.'
+    : (logoutPorInatividade ? 'Você ficou mais de 40 minutos inativo e foi desconectado por segurança. Entre novamente.' : '');
   logoutManual = false;
+  logoutPorInatividade = false;
+  if(inatividadeTimer) clearTimeout(inatividadeTimer);
   document.body.classList.remove('valores-ocultos');
 }
 function showApp(){
@@ -971,6 +992,7 @@ function showApp(){
   document.getElementById('bottomNav').style.display = 'flex';
   document.body.classList.add('has-bottom-nav');
   document.getElementById('logoutNotice').textContent = '';
+  resetInatividadeTimer();
   if(primeiraVez) mostrarView('homeView');
 }
 
