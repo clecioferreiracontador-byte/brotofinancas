@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Broto</title>
 <link rel="manifest" href="manifest.json?v=5">
 <link rel="icon" href="icons/icon-32.png?v=5" type="image/png" sizes="32x32">
@@ -30,6 +30,7 @@
     background:linear-gradient(160deg,#f8fafc,#e2e8f0);
   }
   *{box-sizing:border-box;}
+  html, body{ overscroll-behavior:none; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     background:linear-gradient(160deg,#0f172a,#111827); color:var(--text); padding:24px;
@@ -125,7 +126,34 @@
   .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
   .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
-  .actions-cell{display:flex; gap:6px;}
+  .actions-cell{display:flex; gap:6px; justify-content:flex-end;}
+
+  /* Menu "3 pontinhos" reutilizável nas linhas de histórico (Lançamentos, Razão, Provisões) —
+     esconde as ações atrás de um clique em vez de mostrar tudo o tempo todo. */
+  .row-icon-btn{
+    background:none; border:none; color:var(--muted); font-size:1rem; padding:4px 6px;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .row-icon-btn:hover{ color:var(--text); }
+  .row-menu-wrap{ position:relative; display:inline-flex; }
+  .row-menu-btn{
+    background:none; border:none; color:var(--muted); font-size:1.15rem; font-weight:700;
+    padding:2px 8px; cursor:pointer; line-height:1;
+  }
+  .row-menu-btn:hover{ color:var(--text); }
+  .row-menu{
+    display:none; position:absolute; right:0; top:100%; margin-top:4px; z-index:80;
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 10px 28px rgba(0,0,0,0.4); padding:6px; min-width:150px;
+    flex-direction:column; gap:2px;
+  }
+  .row-menu.open{ display:flex; }
+  .row-menu button{
+    background:none; border:none; text-align:left; padding:8px 10px; border-radius:6px;
+    color:var(--text); font-size:0.82rem; cursor:pointer; white-space:nowrap; font-weight:500;
+  }
+  .row-menu button:hover{ background:rgba(255,255,255,0.08); }
+  .row-menu button.row-menu-danger{ color:#f87171; }
 
   #loadingScreen{display:flex; align-items:center; justify-content:center; min-height:60vh;}
   .loading-logo{width:64px; height:64px; border-radius:17px; animation:pulseLogo 1.1s ease-in-out infinite;}
@@ -302,6 +330,8 @@
   }
 
   .meta-invest-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px;}
+  .meta-invest-box.clickable{cursor:pointer; transition:border-color .15s;}
+  .meta-invest-box.clickable:hover{border-color:var(--blue);}
   .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
   .meta-invest-box .linha2{display:flex; justify-content:space-between; margin-top:6px; font-size:0.76rem; color:var(--muted);}
 
@@ -1014,11 +1044,36 @@ function toggleNotifPanel(){
 function closeNotifPanel(){
   document.getElementById('notifPanel').classList.remove('open');
 }
+
+// Menu "3 pontinhos" das linhas de histórico (Lançamentos, Razão, Provisões).
+function toggleRowMenu(btn, event){
+  if(event) event.stopPropagation();
+  const menu = btn.closest('.row-menu-wrap').querySelector('.row-menu');
+  const abrir = !menu.classList.contains('open');
+  document.querySelectorAll('.row-menu.open').forEach(m => {
+    m.classList.remove('open');
+    m.style.left = ''; m.style.right = ''; m.style.top = ''; m.style.bottom = ''; m.style.marginTop = ''; m.style.marginBottom = '';
+  });
+  if(!abrir) return;
+  menu.classList.add('open');
+  // Em tabelas com scroll horizontal (celular) ou listas longas, o menu pode nascer fora da
+  // tela — se estourar a direita/embaixo, inverte para a esquerda/cima.
+  const r = menu.getBoundingClientRect();
+  if(r.right > window.innerWidth){ menu.style.right = 'auto'; menu.style.left = '0'; }
+  if(r.bottom > window.innerHeight){
+    menu.style.top = 'auto'; menu.style.bottom = '100%';
+    menu.style.marginTop = '0'; menu.style.marginBottom = '4px';
+  }
+}
+function closeAllRowMenus(){
+  document.querySelectorAll('.row-menu.open').forEach(m => m.classList.remove('open'));
+}
 document.addEventListener('click', function(e){
   const wrap = document.getElementById('accountMenuWrap');
   if(wrap && !wrap.contains(e.target)) closeAccountMenu();
   const notifWrap = document.getElementById('notifWrap');
   if(notifWrap && !notifWrap.contains(e.target)) closeNotifPanel();
+  if(!e.target.closest('.row-menu-wrap')) closeAllRowMenus();
 });
 
 function toggleValores(){
@@ -2300,7 +2355,7 @@ function renderProvisoes(){
     const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : {label:'Despesa', cls:'despesa'};
     const cor = p.tipo === 'receita' ? 'pos' : 'neg';
     const recorrenteTag = p.recorrenciaId ? '<span class="recorrente-tag">🔁 Recorrente</span>' : '';
-    const btnExcluirSerie = p.recorrenciaId ? `<button class="cartao-acao" onclick="excluirSerieProvisao('${p.recorrenciaId}')" title="Excluir série">x</button>` : '';
+    const btnExcluirSerie = p.recorrenciaId ? `<button class="row-menu-danger" onclick="excluirSerieProvisao('${p.recorrenciaId}')">Excluir série</button>` : '';
     const vencimentoTxt = p.vencimento ? (' • Vence ' + fmtDate(p.vencimento)) : '';
     return `
       <div class="list-item">
@@ -2310,10 +2365,15 @@ function renderProvisoes(){
         </div>
         <div class="actions">
           <span class="${cor}" style="margin-right:6px;">${fmt(p.valor)}</span>
-          <button class="secondary small" onclick="abrirGoogleAgendaProvisao('${p.id}')" title="Abrir Google Agenda com lembrete 1 dia antes do vencimento">📅 Lembrete</button>
-          <button class="baixa" onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
-          <button class="cartao-acao" onclick="excluirProvisao('${p.id}')" title="Excluir">x</button>
-          ${btnExcluirSerie}
+          <button class="row-icon-btn" onclick="abrirGoogleAgendaProvisao('${p.id}')" title="Lembrete no Google Agenda, 1 dia antes do vencimento">📅</button>
+          <div class="row-menu-wrap">
+            <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+            <div class="row-menu">
+              <button onclick="lancarProvisaoAgora('${p.id}')">Lançar agora</button>
+              <button class="row-menu-danger" onclick="excluirProvisao('${p.id}')">Excluir</button>
+              ${btnExcluirSerie}
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -2599,7 +2659,7 @@ function linhaLancamentoHtml(item){
       : 'info';
   let acoesExtra = '';
   if(item.tipo === 'divida' && Number(item.parcelas) > 0){
-    acoesExtra = `<button class="baixa" onclick="baixarParcela('${item.id}')">Baixar</button>`;
+    acoesExtra = `<button onclick="baixarParcela('${item.id}')">Baixar parcela</button>`;
   }
   return `
     <tr>
@@ -2609,9 +2669,14 @@ function linhaLancamentoHtml(item){
       <td>${item.descricao || '-'}</td>
       <td class="${corValor}">${fmt(item.valor)}</td>
       <td class="actions-cell">
-        ${acoesExtra}
-        <button class="edit" onclick="editLancamento('${item.id}')">Editar</button>
-        <button class="cartao-acao" onclick="deleteLancamento('${item.id}')" title="Excluir">x</button>
+        <div class="row-menu-wrap">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+          <div class="row-menu">
+            ${acoesExtra}
+            <button onclick="editLancamento('${item.id}')">Editar</button>
+            <button class="row-menu-danger" onclick="deleteLancamento('${item.id}')">Excluir</button>
+          </div>
+        </div>
       </td>
     </tr>`;
 }
@@ -2751,7 +2816,12 @@ function getRazaoConfig(key){
     total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'investimento'){
     itens = data.lancamentos.filter(l=>l.tipo==='investimento');
-    titulo = 'Razão — Pé de Meia';
+    if(razaoFiltroNome){
+      itens = itens.filter(l => l.meta === razaoFiltroNome);
+      titulo = 'Razão — Pé de Meia: ' + razaoFiltroNome;
+    } else {
+      titulo = 'Razão — Pé de Meia';
+    }
     total = itens.reduce((s,l)=>s+Number(l.valor),0);
   } else if(key === 'receitaMes'){
     itens = data.lancamentos.filter(l=>l.tipo==='receita' && itemInMonth(l, monthKey));
@@ -3059,11 +3129,12 @@ function renderInvestimentos(){
     metasEl.innerHTML = metas.map(m => {
       const corBarra = m.atingida ? 'var(--green)' : corBarraOrcamento(m.pct);
       const folha = m.pct > 0 ? `<span class="orc-bar-leaf">${folhaBarSvg()}</span>` : '';
+      const nomeEscapado = (m.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       return `
-        <div class="meta-invest-box">
+        <div class="meta-invest-box clickable" onclick="abrirRazao('investimento', '${nomeEscapado}')" title="Ver e editar os lançamentos desta meta">
           <div class="linha1">
             <span>${m.atingida ? '🎉 ' : ''}${m.nome}</span>
-            <button class="cartao-acao" onclick="excluirMetaInvestimentoPorId('${m.id}')" title="Excluir meta">x</button>
+            <button class="cartao-acao" onclick="event.stopPropagation(); excluirMetaInvestimentoPorId('${m.id}')" title="Excluir meta">x</button>
           </div>
           <div class="orc-bar-wrap"><div class="orc-bar" style="width:${m.pct}%; background:${corBarra};">${folha}</div></div>
           <div class="linha2">
