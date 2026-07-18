@@ -40,13 +40,10 @@
   .login-card .app-logo{width:80px; height:80px; border-radius:20px; margin-bottom:8px;}
   .app-logo-name{display:block; text-align:center; font-weight:700; letter-spacing:.04em; color:var(--text); font-size:1rem; margin-bottom:14px;}
   .home-banner{
-    background:#ffffff; border-radius:28px; padding:22px 20px 16px; overflow:hidden;
+    background-color:#ffffff; border-radius:28px; padding:22px 20px 16px; overflow:hidden;
     box-shadow:0 6px 20px rgba(0,0,0,0.18);
-  }
-  .home-banner-watermark{
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    font-weight:800; font-size:2.8rem; letter-spacing:.1em; text-transform:uppercase;
-    color:rgba(21,128,61,0.09); white-space:nowrap; pointer-events:none; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='70'%3E%3Ctext%20x='0'%20y='42'%20font-family='Arial,%20sans-serif'%20font-weight='800'%20font-size='17'%20fill='rgba(21,128,61,0.2)'%20transform='rotate(-16%2070%2035)'%3EBroto%3C/text%3E%3C/svg%3E");
+    background-repeat:repeat;
   }
   .home-banner .app-logo{ position:relative; z-index:1; }
   .home-banner .home-greeting{ position:relative; z-index:1; color:#0f172a; }
@@ -187,7 +184,7 @@
   .bottom-nav-btn.destaque .bn-label{ font-weight:700; }
 
   /* Foto de perfil, no canto superior esquerdo (espelha o menu de conta à direita) */
-  .perfil-wrap{ position:fixed; top:16px; left:16px; z-index:960; }
+  .perfil-wrap{ position:absolute; top:16px; left:16px; z-index:960; }
   .avatar-btn{
     background:var(--card2); color:var(--muted); border:1px solid var(--border); border-radius:50%;
     width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -198,7 +195,7 @@
   .avatar-btn img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
 
   /* Menu de conta flutuante (perfil / valores / sair) */
-  .account-menu-wrap{ position:fixed; top:16px; right:16px; z-index:960; }
+  .account-menu-wrap{ position:absolute; top:16px; right:16px; z-index:960; }
   .menu-btn{
     background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:50%;
     width:50px; height:50px; display:flex; align-items:center; justify-content:center;
@@ -222,7 +219,7 @@
   .account-menu-item .ami-icon svg{ width:18px; height:18px; }
 
   /* Sino de notificações, à esquerda do menu de conta */
-  .notif-wrap{ position:fixed; top:16px; right:74px; z-index:960; }
+  .notif-wrap{ position:absolute; top:16px; right:74px; z-index:960; }
   .notif-badge{
     position:absolute; top:-2px; right:-2px; min-width:18px; height:18px; padding:0 4px;
     background:var(--red); color:#fff; border-radius:50%; font-size:0.65rem; font-weight:700;
@@ -308,8 +305,7 @@
     .sub{ font-size:0.78rem; }
     .app-logo{ width:70px; height:70px; border-radius:18px; }
     .login-card .app-logo{ width:64px; height:64px; border-radius:16px; }
-    .home-banner{ border-radius:22px; padding:18px 14px 14px; }
-    .home-banner-watermark{ font-size:1.9rem; }
+    .home-banner{ border-radius:22px; padding:18px 14px 14px; background-size:100px 50px; }
 
     .panel{ padding:12px; }
     .panel h2{ font-size:0.95rem; gap:6px; }
@@ -573,7 +569,6 @@
 <div id="homeView">
 
 <div class="header-block home-banner">
-  <span class="home-banner-watermark">Broto</span>
   <img src="icons/icon-192.png" alt="Broto" class="app-logo">
   <div class="home-greeting" id="homeGreeting"></div>
   <div class="sub"></div>
