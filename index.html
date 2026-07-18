@@ -354,8 +354,11 @@
   #scoreMensagem{ min-height:2.4em; }
   .score-dica{ display:flex; align-items:center; gap:8px; background:var(--card2); border-radius:10px; padding:10px 12px; margin-top:14px; font-size:0.82rem; min-height:60px; box-sizing:border-box; }
   .score-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px; }
-  .score-stats > div{ background:var(--card2); border-radius:10px; padding:10px; text-align:center; }
+  .score-stats > div{ background:var(--card2); border-radius:10px; padding:10px 4px; text-align:center; overflow:hidden; }
   .score-stats .hint{ margin-bottom:2px; }
+  /* Fonte reduzida e sem quebra de linha: valores acumulados de Mês/3 meses ficam bem maiores
+     que os de Hoje, e sem isso a caixa cresceria/quebraria linha, fazendo o modal "pular". */
+  .score-stat-valor{ font-size:0.78rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .conta-forma-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;}
   .conta-forma-box .label{color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:.03em;}
@@ -991,9 +994,9 @@
       <span>✦</span> <span id="scoreDicaTexto"></span>
     </div>
     <div class="score-stats">
-      <div><div class="hint">Entradas</div><div class="pos blur-target" id="scoreEntradas">R$ 0,00</div></div>
-      <div><div class="hint">Saídas</div><div class="neg blur-target" id="scoreSaidas">R$ 0,00</div></div>
-      <div><div class="hint">Resultado</div><div class="blur-target" id="scoreResultado">R$ 0,00</div></div>
+      <div><div class="hint">Entradas</div><div class="info blur-target score-stat-valor" id="scoreEntradas">R$ 0,00</div></div>
+      <div><div class="hint">Saídas</div><div class="neg blur-target score-stat-valor" id="scoreSaidas">R$ 0,00</div></div>
+      <div><div class="hint">Resultado</div><div class="blur-target score-stat-valor" id="scoreResultado">R$ 0,00</div></div>
     </div>
   </div>
 </div>
@@ -2376,7 +2379,7 @@ function renderScoreFinanceiroDetalhe(){
   document.getElementById('scoreSaidas').textContent = fmt(r.saidas);
   const resultadoEl = document.getElementById('scoreResultado');
   resultadoEl.textContent = fmt(r.resultado);
-  resultadoEl.className = 'blur-target ' + (r.resultado >= 0 ? 'pos' : 'neg');
+  resultadoEl.className = 'blur-target score-stat-valor ' + (r.resultado >= 0 ? 'pos' : 'neg');
 }
 
 function salvarOrcamentoTotal(valor){
