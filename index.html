@@ -92,8 +92,6 @@
   button.secondary{background:var(--card2); border:1px solid var(--border); color:var(--text);}
   button.small{padding:5px 10px; font-size:0.76rem; font-weight:600;}
   button.iconbtn{padding:0 12px; min-width:38px;}
-  button.edit{background:#1e3a5f; color:#93c5fd; padding:5px 10px; font-size:0.78rem;}
-  button.baixa{background:#14532d; color:#86efac; padding:5px 10px; font-size:0.78rem;}
   button:hover{opacity:0.9;}
   /* Ações do cartão de crédito na Home: mesma paleta azul do valor da fatura, como símbolos compactos */
   button.cartao-acao{
@@ -153,7 +151,7 @@
      silenciosamente em vários navegadores mobile). */
   .cal-icon-wrap{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
   input[type="month"].cal-icon-input{
-    width:26px; height:26px; padding:0; border:1px solid var(--border); border-radius:6px;
+    width:26px; height:26px; padding:0; border:none; border-radius:6px;
     background:transparent; color:transparent; font-size:0; min-width:0; max-width:26px;
     -webkit-min-logical-width:26px; cursor:pointer;
   }
@@ -161,6 +159,10 @@
   .cal-icon-symbol{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     font-size:0.85rem; line-height:1; pointer-events:none;
+  }
+  .cal-icon-wrap.active::after{
+    content:''; position:absolute; top:0; right:0; width:6px; height:6px;
+    border-radius:50%; background:var(--blue); pointer-events:none;
   }
   .row-menu-wrap{ position:relative; display:inline-flex; }
   .row-menu-btn{
@@ -3585,6 +3587,7 @@ function renderDividas(){
   } else {
     list.innerHTML = itens.map(d => {
       const quitada = !d.parcelas || Number(d.parcelas) <= 0;
+      const acoesExtra = quitada ? '' : `<button onclick="baixarParcela('${d.id}')">Baixar parcela</button>`;
       return `
       <div class="list-item">
         <div>
@@ -3593,9 +3596,15 @@ function renderDividas(){
         </div>
         <div class="actions">
           <span class="neg" style="margin-right:6px;">${fmt(d.valor)}</span>
-          ${quitada ? '<span class="quitada-tag">Quitada ✓</span>' : `<button class="baixa" onclick="baixarParcela('${d.id}')">Baixar</button>`}
-          <button class="edit" onclick="editLancamento('${d.id}')">Editar</button>
-          <button class="cartao-acao" onclick="deleteLancamento('${d.id}')" title="Excluir">x</button>
+          ${quitada ? '<span class="quitada-tag">Quitada ✓</span>' : ''}
+          <div class="row-menu-wrap">
+            <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Mais ações">⋮</button>
+            <div class="row-menu">
+              ${acoesExtra}
+              <button onclick="editLancamento('${d.id}')">Editar</button>
+              <button class="row-menu-danger" onclick="deleteLancamento('${d.id}')">Excluir</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -3687,7 +3696,7 @@ function renderCartoesPanel(){
   filtroInput.title = mesFiltro
     ? 'Filtrando faturas até ' + mesFiltro.split('-').reverse().join('/') + ' — toque para mudar'
     : 'Ver faturas até um mês de referência';
-  filtroInput.style.borderColor = mesFiltro ? 'var(--blue)' : '';
+  filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!mesFiltro);
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
