@@ -149,7 +149,9 @@
      Precisa ser um input de verdade — não escondido/1px — para o seletor nativo abrir
      de forma confiável no celular (showPicker()/focus() em input invisível falha
      silenciosamente em vários navegadores mobile). */
-  .cal-icon-wrap{ position:relative; display:inline-flex; align-items:center; justify-content:center; }
+  /* Só aparece no celular — no desktop o mês de referência é controlado pelo seletor
+     abaixo da foto (.home-mes-input), que já cobre cartões junto com o resto da Home. */
+  .cal-icon-wrap{ position:relative; display:none; align-items:center; justify-content:center; }
   input[type="month"].cal-icon-input{
     width:26px; height:26px; padding:0; border:none; border-radius:6px;
     background:transparent; color:transparent; font-size:0; min-width:0; max-width:26px;
@@ -247,7 +249,10 @@
   .bottom-nav-btn.destaque .bn-label{ font-weight:700; }
 
   /* Foto de perfil, no canto superior esquerdo (espelha o menu de conta à direita) */
-  .perfil-wrap{ position:absolute; top:calc(16px + env(safe-area-inset-top)); left:16px; z-index:960; }
+  .perfil-wrap{
+    position:absolute; top:calc(16px + env(safe-area-inset-top)); left:16px; z-index:960;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
   .avatar-btn{
     background:var(--card2); color:var(--muted); border:2px solid rgba(255,255,255,0.4); border-radius:50%;
     width:50px; height:50px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -256,6 +261,13 @@
   .avatar-btn:hover{ opacity:0.85; }
   .avatar-btn svg{ width:24px; height:24px; }
   .avatar-btn img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  /* Seletor de mês abaixo da foto — só no desktop (é o único que controla receitas, despesas,
+     resultado e fatura de cartão em aberto do mês na Home; no celular quem muda o mês é o
+     filtro em Lançamentos). */
+  .home-mes-input{
+    width:64px; height:24px; padding:2px 4px; font-size:0.66rem; min-width:0;
+    -webkit-min-logical-width:64px; border-radius:6px;
+  }
 
   /* Menu de conta flutuante (perfil / valores / sair) */
   .account-menu-wrap{ position:absolute; top:calc(16px + env(safe-area-inset-top)); right:16px; z-index:960; }
@@ -487,6 +499,8 @@
     .perfil-wrap{ top:calc(10px + env(safe-area-inset-top)); left:10px; }
     .avatar-btn{ width:46px; height:46px; }
     .avatar-btn svg{ width:21px; height:21px; }
+    .home-mes-input{ display:none; }
+    .cal-icon-wrap{ display:inline-flex; }
   }
 </style>
 </head>
@@ -520,6 +534,7 @@
     <img id="avatarImg" alt="Foto de perfil" style="display:none;">
   </button>
   <input type="file" id="avatarFileInput" accept="image/*" style="display:none;" onchange="processarFotoPerfil(event)">
+  <input type="month" id="filtroMesPrincipal" class="home-mes-input" title="Ver outro mês" onchange="mudarFiltroMes(this.value)">
 </div>
 
 <div id="notifWrap" class="notif-wrap" style="display:none;">
@@ -2183,11 +2198,13 @@ function itemInMonth(item, monthKey){
   return item.data && item.data.slice(0,7) === monthKey;
 }
 
-// O seletor de mês existe tanto na Home quanto em Lançamentos — os dois ficam sempre sincronizados.
+// O seletor de mês existe em Lançamentos, no modal de Detalhes e abaixo da foto na Home
+// (desktop) — os três ficam sempre sincronizados.
 function mudarFiltroMes(valor){
   if(!valor) return;
   document.getElementById('filtroMes').value = valor;
   document.getElementById('filtroMesHome').value = valor;
+  document.getElementById('filtroMesPrincipal').value = valor;
   renderAll();
 }
 
@@ -2290,12 +2307,19 @@ function populateCartoesDatalist(){
   datalist.innerHTML = nomes.map(n => `<option value="${n}"></option>`).join('');
 }
 
+// No celular, o ícone de calendário do painel de Cartões filtra o mês só ali, independente do
+// resto do app. No desktop esse ícone some (há um seletor único abaixo da foto na Home), então
+// os cartões passam a seguir o mesmo mês de referência de tudo mais.
+function mesFiltroCartoesAtivo(){
+  return isMobileScreen() ? document.getElementById('filtroMesCartoes').value : currentMonthKey();
+}
+
 // Baixa (paga) a fatura de um cartão específico: lança automaticamente uma Despesa
 // na categoria "Cartão de Crédito" com o nome do cartão, abatendo o saldo em aberto.
 // Recebe o índice do cartão dentro de cartoesAgrupados() para evitar problemas de
 // escaping quando o nome do cartão tem acentos, aspas etc.
 function pagarFatura(idx){
-  const mesFiltro = document.getElementById('filtroMesCartoes').value;
+  const mesFiltro = mesFiltroCartoesAtivo();
   const cartoes = cartoesAgrupados(mesFiltro);
   const cartao = cartoes[idx];
   if(!cartao) return;
@@ -3084,7 +3108,7 @@ function renderSummary(){
   const despesaMes = mesItems.filter(l=>l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
   const resultado = receitaMes - despesaMes;
   const saldoConta = calcularSaldoContaCorrente().saldo;
-  const cartoes = cartoesAgrupados();
+  const cartoes = cartoesAgrupados(monthKey);
   const faturaTotal = cartoes.reduce((s,c)=>s+Number(c.total),0);
   const totalDividas = sumByTipo('divida');
   const totalInvest = sumByTipo('investimento');
@@ -3496,7 +3520,11 @@ function renderCharts(){
 
   if(charts.categorias) charts.categorias.destroy();
   const ctxCat = document.getElementById('chartCategorias').getContext('2d');
-  const mostrarLegendaCategorias = !isMobileScreen();
+  // No celular a caixa de "maiores gastos" fica escondida por padrão (só aparece ao clicar),
+  // então não precisa reservar espaço à direita — mantém o gráfico centralizado. No desktop ela
+  // fica sempre visível flutuando por cima do gráfico, então o espaço continua reservado ali
+  // mesmo com a legenda colorida removida.
+  const reservarEspacoTopDespesas = !isMobileScreen();
   charts.categorias = new Chart(ctxCat, {
     type: 'doughnut',
     data: {
@@ -3510,11 +3538,9 @@ function renderCharts(){
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      // No celular a caixa de "maiores gastos" fica escondida por padrão (só aparece ao clicar),
-      // então não precisa reservar espaço à direita — mantém o gráfico centralizado.
-      layout: { padding: { right: mostrarLegendaCategorias ? 90 : 0 } },
+      layout: { padding: { right: reservarEspacoTopDespesas ? 90 : 0 } },
       plugins: {
-        legend: { display: mostrarLegendaCategorias, position:'bottom', labels:{color:corGraficoTexto(), boxWidth:12, font:{size:11}} },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(ctx){
@@ -3692,11 +3718,12 @@ function renderContaPanel(){
 
 function renderCartoesPanel(){
   const filtroInput = document.getElementById('filtroMesCartoes');
-  const mesFiltro = filtroInput.value;
-  filtroInput.title = mesFiltro
-    ? 'Filtrando faturas até ' + mesFiltro.split('-').reverse().join('/') + ' — toque para mudar'
+  const localValor = filtroInput.value;
+  filtroInput.title = localValor
+    ? 'Filtrando faturas até ' + localValor.split('-').reverse().join('/') + ' — toque para mudar'
     : 'Ver faturas até um mês de referência';
-  filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!mesFiltro);
+  filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!localValor);
+  const mesFiltro = mesFiltroCartoesAtivo();
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
@@ -3738,6 +3765,7 @@ document.getElementById('lancCategoria').addEventListener('change', function(){
 document.getElementById('lancCancelBtn').addEventListener('click', cancelEdit);
 document.getElementById('filtroMes').addEventListener('change', function(){
   document.getElementById('filtroMesHome').value = this.value;
+  document.getElementById('filtroMesPrincipal').value = this.value;
   renderAll();
 });
 
@@ -3806,6 +3834,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
   document.getElementById('lancData').value = isoDate;
   document.getElementById('filtroMes').value = monthKey;
   document.getElementById('filtroMesHome').value = monthKey;
+  document.getElementById('filtroMesPrincipal').value = monthKey;
   updateFormFieldsVisibility('receita');
   populateProvisaoCategoriaSelect();
 })();
