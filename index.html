@@ -34,7 +34,9 @@
   /* Fundo escuro também no <html> (não só no <body>) — sem isso, o efeito de "esticar" do
      iOS ao rolar além do topo/fim da página revela um branco por trás, mesmo com
      overscroll-behavior:none (que nem todo Safari respeita 100%). */
-  html{ background:#0f172a; }
+  /* Mesmo cinza do fundo do banner "Broto" na Home (var(--border)) — é o que a barra de
+     status translúcida do iOS acaba revelando no topo. */
+  html{ background:#334155; }
   html, body{ overscroll-behavior:none; }
   body{
     margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
@@ -1017,7 +1019,7 @@
 // Aplica o tema salvo o quanto antes, pra evitar o "flash" do tema errado ao carregar a página.
 if(localStorage.getItem('micelc_tema') === 'claro'){
   document.body.classList.add('tema-claro');
-  document.documentElement.style.background = '#f1f5f9';
+  document.documentElement.style.background = '#e2e8f0';
 }
 
 // ---------- Firebase ----------
@@ -1298,7 +1300,7 @@ function atualizarLabelTema(){
 }
 function toggleTema(){
   const claro = document.body.classList.toggle('tema-claro');
-  document.documentElement.style.background = claro ? '#f1f5f9' : '#0f172a';
+  document.documentElement.style.background = claro ? '#e2e8f0' : '#334155';
   localStorage.setItem('micelc_tema', claro ? 'claro' : 'escuro');
   atualizarLabelTema();
   if(document.getElementById('appScreen').style.display !== 'none') renderAll();
