@@ -703,10 +703,11 @@
   </h2>
   <div class="panel-body">
   <div id="cartoesList"></div>
-  <div class="totals-line">
-    <span style="display:flex; align-items:center; gap:6px;">
+  <div class="totals-line" style="flex-wrap:nowrap;">
+    <span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
       Faturas em aberto
-      <input type="month" id="filtroMesCartoes" class="mini-cal-input" onchange="renderCartoesPanel()" title="Ver faturas em aberto ou já vencidas até este mês">
+      <button type="button" class="row-icon-btn" id="filtroMesCartoesBtn" onclick="abrirFiltroMesCartoes()" title="Ver faturas até um mês de referência">📅</button>
+      <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" style="position:absolute; width:1px; height:1px; opacity:0; border:none; padding:0; min-width:0;">
     </span>
     <span id="cartoesTotal" class="blur-target">R$ 0,00</span>
   </div>
@@ -3663,8 +3664,25 @@ function renderContaPanel(){
   }
 }
 
+// O campo de mês fica praticamente invisível (só o ícone de calendário aparece) — este botão
+// abre o seletor nativo nele. showPicker() é o jeito moderno (Chrome/Android); no Safari/iOS,
+// que ainda não suporta, cai para focus()+click() (o próprio Safari abre o seletor ao focar).
+function abrirFiltroMesCartoes(){
+  const input = document.getElementById('filtroMesCartoes');
+  try{
+    if(input.showPicker){ input.showPicker(); return; }
+  }catch(e){}
+  input.focus();
+  input.click();
+}
+
 function renderCartoesPanel(){
   const mesFiltro = document.getElementById('filtroMesCartoes').value;
+  const filtroBtn = document.getElementById('filtroMesCartoesBtn');
+  filtroBtn.title = mesFiltro
+    ? 'Filtrando faturas até ' + mesFiltro.split('-').reverse().join('/') + ' — toque para mudar'
+    : 'Ver faturas até um mês de referência';
+  filtroBtn.style.color = mesFiltro ? 'var(--blue)' : '';
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
