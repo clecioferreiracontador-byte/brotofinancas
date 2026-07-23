@@ -66,6 +66,18 @@
   .card .value{font-size:1.35rem; font-weight:700; margin-top:6px;}
   .pos{color:var(--green);} .neg{color:var(--red);} .info{color:var(--blue);} .warn{color:var(--yellow);}
 
+  /* Card de destaque do saldo (topo da Home): saldo grande e centralizado, com Receitas /
+     Despesas / Resultado do mês em três colunas logo abaixo, cada uma clicável para o Razão. */
+  .card.saldo-hero{ grid-column:1 / -1; text-align:center; padding:22px 18px; }
+  .card.saldo-hero .label{ letter-spacing:.06em; }
+  .card.saldo-hero .value{ font-size:2rem; margin-top:8px; }
+  .saldo-hero-stats{ display:flex; justify-content:center; align-items:stretch; gap:0; margin-top:18px; }
+  .saldo-hero-stats > .st{ flex:1; max-width:150px; display:flex; flex-direction:column; gap:4px; padding:0 8px; cursor:pointer; }
+  .saldo-hero-stats > .st:hover .kt{ color:var(--text); }
+  .saldo-hero-stats .sep{ width:1px; background:var(--border); flex:none; }
+  .saldo-hero-stats .kt{ font-size:0.62rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); transition:color .15s; }
+  .saldo-hero-stats .st-val{ font-size:0.95rem; font-weight:700; }
+
   .grid2{display:grid; grid-template-columns:1.1fr 1fr; gap:20px; margin-bottom:24px;}
   @media (max-width:900px){ .grid2{grid-template-columns:1fr;} }
 
@@ -130,6 +142,25 @@
   .list-item .meta{color:var(--muted); font-size:0.76rem;}
   .list-item .actions{display:flex; gap:6px; flex-shrink:0; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
   .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
+
+  /* Cartões da Home: a fatura em aberto mais alta aparece em destaque (card com brilho azul e
+     ações "Pagar fatura" / "Ver compras"); os demais cartões vêm numa lista compacta abaixo. */
+  .cartao-featured{
+    position:relative; overflow:hidden; border-radius:14px; padding:16px; margin-bottom:14px;
+    background:linear-gradient(140deg, color-mix(in srgb,var(--blue) 26%, var(--card)), var(--card));
+    border:1px solid color-mix(in srgb,var(--blue) 45%, var(--border));
+  }
+  .cartao-featured .cf-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px;}
+  .cartao-featured .cf-logo{width:48px; height:34px; border-radius:8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;}
+  .cartao-featured .cf-logo img{max-width:80%; max-height:80%; object-fit:contain;}
+  .cartao-featured .cf-logo-nome{font-weight:700; font-size:1.05rem;}
+  .cartao-featured .cf-venc{font-size:0.72rem; font-weight:600; color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%, transparent); padding:4px 10px; border-radius:20px; white-space:nowrap;}
+  .cartao-featured .cf-kicker{font-size:0.66rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+  .cartao-featured .cf-val{font-size:1.7rem; font-weight:700; color:var(--text); margin:4px 0 14px;}
+  .cartao-featured .cf-actions{display:flex; gap:10px;}
+  .cartao-featured .cf-actions button{flex:1;}
+  .cf-btn-ghost{background:transparent !important; border:1px solid var(--border) !important; color:var(--text) !important;}
+  .cartao-nome-linha{display:flex; align-items:center; gap:6px; font-weight:600;}
   .month-filter{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
   footer{color:var(--muted); font-size:0.75rem; text-align:center; margin-top:20px;}
   /* Sem display:flex aqui — isso tirava o <td> do modelo de layout de tabela, quebrando o
@@ -489,11 +520,14 @@
     .card .value{ font-size:1.1rem; }
     .cards{ gap:10px; margin-bottom:18px; }
 
-    /* Home do celular: só mostra o Saldo em Conta Corrente entre os cards de resumo, centralizado */
+    /* Home do celular: só mostra o card de destaque do Saldo (com Receitas/Despesas/Resultado
+       em linha); os cards secundários ficam ocultos, pois já têm painéis próprios abaixo. */
     #summaryCards{ display:flex; justify-content:center; }
     #summaryCards .card{ display:none; }
-    #summaryCards .card[data-key="conta"]{ display:block; width:100%; max-width:320px; text-align:center; padding:18px; }
-    #summaryCards .card[data-key="conta"] .value{ font-size:1.7rem; }
+    #summaryCards .card.saldo-hero{ display:block; width:100%; max-width:360px; padding:18px; }
+    #summaryCards .card.saldo-hero .value{ font-size:1.7rem; }
+    .saldo-hero-stats > .st{ padding:0 4px; }
+    .saldo-hero-stats .st-val{ font-size:0.82rem; }
 
     .grid2{ gap:12px; margin-bottom:16px; }
     .row-gap{ margin-bottom:16px; }
@@ -1090,6 +1124,13 @@
         <label>Arquivo (.ofx, .csv ou .pdf)</label>
         <input type="file" id="extratoArquivo" accept=".ofx,.qfx,.csv,.txt,.pdf" onchange="processarArquivoExtrato(event)">
       </div>
+      <div class="field" id="fieldExtratoSenhaPdf" style="display:none; min-width:220px;">
+        <label>Senha do PDF</label>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="extratoSenhaPdf" placeholder="Senha do arquivo" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); tentarLerPdfComSenha();}">
+          <button type="button" class="secondary small" onclick="tentarLerPdfComSenha()">Ler PDF</button>
+        </div>
+      </div>
     </form>
 
     <div class="hint" id="extratoErro" style="margin-top:4px;"></div>
@@ -1572,11 +1613,13 @@ let extratoParsed = [];
 
 function resetExtratoForm(){
   extratoParsed = [];
+  pdfExtratoPendente = null;
   document.getElementById('extratoArquivo').value = '';
   document.getElementById('extratoPreviewWrap').style.display = 'none';
   document.getElementById('extratoErro').textContent = '';
   document.getElementById('extratoTipo').value = 'conta';
   document.getElementById('extratoCartaoNome').value = '';
+  esconderCampoSenhaPdf();
   atualizarCamposExtrato();
 }
 
@@ -1697,9 +1740,11 @@ function carregarPdfJs(){
 
 // Extrai o texto de um PDF reconstruindo as linhas: agrupa os pedaços de texto pela posição
 // vertical (y) e ordena pela horizontal (x), já que o pdf.js entrega fragmentos soltos.
-async function extrairLinhasPDF(arrayBuffer){
+async function extrairLinhasPDF(arrayBuffer, senha){
   const pdfjsLib = await carregarPdfJs();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const params = { data: arrayBuffer };
+  if(senha) params.password = senha;
+  const pdf = await pdfjsLib.getDocument(params).promise;
   const linhas = [];
   for(let p = 1; p <= pdf.numPages; p++){
     const page = await pdf.getPage(p);
@@ -1783,24 +1828,11 @@ function processarArquivoExtrato(e){
   leitor.onerror = function(){ erroEl.textContent = 'Não foi possível ler esse arquivo.'; };
 
   if(nomeArquivo.endsWith('.pdf') || arquivo.type === 'application/pdf'){
-    erroEl.style.color = 'var(--muted)';
-    erroEl.textContent = 'Lendo o PDF…';
     leitor.onload = function(ev){
-      extrairLinhasPDF(ev.target.result)
-        .then(linhas => {
-          const itens = parsePDFExtrato(linhas);
-          if(!itens.length){
-            erroEl.style.color = 'var(--red)';
-            erroEl.textContent = linhas.length
-              ? 'Li o PDF, mas não reconheci lançamentos com data e valor. Se for um PDF digitalizado (imagem), use o PDF original do banco ou um arquivo OFX/CSV.'
-              : 'Esse PDF parece ser uma imagem digitalizada (sem texto). Use o PDF original do banco ou um arquivo OFX/CSV.';
-            return;
-          }
-          erroEl.textContent = '';
-          extratoParsed = montarExtratoParsed(itens, tipoExtrato);
-          renderExtratoPreview();
-        })
-        .catch(err => { erroEl.style.color = 'var(--red)'; erroEl.textContent = err.message || 'Não foi possível ler esse PDF.'; });
+      // Guarda o arquivo para uma eventual nova tentativa (ex.: com senha).
+      pdfExtratoPendente = { buffer: ev.target.result, tipoExtrato };
+      esconderCampoSenhaPdf();
+      lerPdfExtrato(ev.target.result, tipoExtrato, null);
     };
     leitor.readAsArrayBuffer(arquivo);
     return;
@@ -1818,6 +1850,65 @@ function processarArquivoExtrato(e){
     renderExtratoPreview();
   };
   leitor.readAsArrayBuffer(arquivo);
+}
+
+// Guarda o último PDF escolhido, pra reprocessar com senha sem a pessoa reanexar o arquivo.
+let pdfExtratoPendente = null;
+
+function esconderCampoSenhaPdf(){
+  const f = document.getElementById('fieldExtratoSenhaPdf');
+  if(f) f.style.display = 'none';
+  const s = document.getElementById('extratoSenhaPdf');
+  if(s) s.value = '';
+}
+function mostrarCampoSenhaPdf(){
+  const f = document.getElementById('fieldExtratoSenhaPdf');
+  if(f) f.style.display = 'flex';
+}
+
+// Lê o PDF (opcionalmente com senha) e joga os lançamentos na tela de conferência. Passa sempre
+// uma CÓPIA do buffer (slice), porque o pdf.js "consome" o ArrayBuffer — sem a cópia, uma nova
+// tentativa com a senha falharia por o buffer já ter sido esvaziado.
+function lerPdfExtrato(buffer, tipoExtrato, senha){
+  const erroEl = document.getElementById('extratoErro');
+  erroEl.style.color = 'var(--muted)';
+  erroEl.textContent = 'Lendo o PDF…';
+  extrairLinhasPDF(buffer.slice(0), senha)
+    .then(linhas => {
+      const itens = parsePDFExtrato(linhas);
+      if(!itens.length){
+        erroEl.style.color = 'var(--red)';
+        erroEl.textContent = linhas.length
+          ? 'Li o PDF, mas não reconheci lançamentos com data e valor. Se for um PDF digitalizado (imagem), use o PDF original do banco ou um arquivo OFX/CSV.'
+          : 'Esse PDF parece ser uma imagem digitalizada (sem texto). Use o PDF original do banco ou um arquivo OFX/CSV.';
+        return;
+      }
+      esconderCampoSenhaPdf();
+      erroEl.textContent = '';
+      extratoParsed = montarExtratoParsed(itens, tipoExtrato);
+      renderExtratoPreview();
+    })
+    .catch(err => {
+      if(err && err.name === 'PasswordException'){
+        mostrarCampoSenhaPdf();
+        erroEl.style.color = 'var(--yellow)';
+        erroEl.textContent = senha
+          ? 'Senha incorreta. Confira a senha e toque em “Ler PDF” de novo.'
+          : 'Este PDF está protegido por senha. Digite a senha do arquivo e toque em “Ler PDF”.';
+        const s = document.getElementById('extratoSenhaPdf'); if(s){ s.focus(); s.select(); }
+        return;
+      }
+      erroEl.style.color = 'var(--red)';
+      erroEl.textContent = (err && err.message) || 'Não foi possível ler esse PDF.';
+    });
+}
+
+function tentarLerPdfComSenha(){
+  if(!pdfExtratoPendente){ return; }
+  const campo = document.getElementById('extratoSenhaPdf');
+  const senha = campo.value;
+  if(!senha){ campo.focus(); return; }
+  lerPdfExtrato(pdfExtratoPendente.buffer, pdfExtratoPendente.tipoExtrato, senha);
 }
 
 // Categorias oferecidas para cada item da conferência: cartão e despesa usam a lista de
@@ -2204,11 +2295,16 @@ const BANCOS_CONHECIDOS = [
   { chave: 'mercadopago', arquivo: 'mercadopago.png' }
 ];
 
-function iconeBancoHtml(nome){
+function arquivoLogoBanco(nome){
   const nomeNormalizado = (nome || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const banco = BANCOS_CONHECIDOS.find(b => nomeNormalizado.includes(b.chave.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
-  if(!banco) return '';
-  return `<span class="banco-badge" title="${nome}"><img src="icons/bancos/${banco.arquivo}" alt="${nome}"></span>`;
+  return banco ? banco.arquivo : '';
+}
+
+function iconeBancoHtml(nome){
+  const arquivo = arquivoLogoBanco(nome);
+  if(!arquivo) return '';
+  return `<span class="banco-badge" title="${nome}"><img src="icons/bancos/${arquivo}" alt="${nome}"></span>`;
 }
 
 // Quando o nome bate com um banco conhecido, mostra s\u00f3 a logo (sem repetir o nome digitado);
@@ -2216,6 +2312,12 @@ function iconeBancoHtml(nome){
 function nomeOuLogoHtml(nome){
   const logo = iconeBancoHtml(nome);
   return logo || (nome || '');
+}
+
+// Logo + nome lado a lado (usado na lista de cart\u00f5es da Home, onde queremos os dois).
+function logoENomeHtml(nome){
+  const logo = iconeBancoHtml(nome);
+  return logo + '<span>' + (nome || 'Cart\u00e3o') + '</span>';
 }
 
 function categoriasBaseParaTipo(tipo){
@@ -3414,21 +3516,40 @@ function renderSummary(){
   const totalDividas = sumByTipo('divida');
   const totalInvest = sumByTipo('investimento');
 
-  const cards = [
-    {key:'conta', label:'Saldo Conta Corrente', value: fmt(saldoConta), cls: saldoConta>=0?'info':'neg'},
-    {key:'receitaMes', label:'Receitas do Mês', value: fmt(receitaMes), cls:'pos'},
-    {key:'despesaMes', label:'Despesas do Mês', value: fmt(despesaMes), cls:'neg'},
-    {key:'resultadoMes', label:'Resultado do Mês', value: fmt(resultado), cls: resultado>=0?'pos':'neg'},
+  // Card de destaque: Saldo em Conta Corrente grande, com Receitas/Despesas/Resultado do mês
+  // em três colunas logo abaixo (cada uma abre o Razão correspondente).
+  const heroHtml = `
+    <div class="card clickable saldo-hero" data-key="conta" onclick="abrirRazao('conta')">
+      <div class="label">Saldo em Conta Corrente</div>
+      <div class="value ${saldoConta>=0?'info':'neg'}">${fmt(saldoConta)}</div>
+      <div class="saldo-hero-stats">
+        <div class="st" onclick="event.stopPropagation(); abrirRazao('receitaMes')">
+          <span class="kt">Receitas</span><span class="st-val pos">${fmt(receitaMes)}</span>
+        </div>
+        <div class="sep"></div>
+        <div class="st" onclick="event.stopPropagation(); abrirRazao('despesaMes')">
+          <span class="kt">Despesas</span><span class="st-val neg">${fmt(despesaMes)}</span>
+        </div>
+        <div class="sep"></div>
+        <div class="st" onclick="event.stopPropagation(); abrirRazao('resultadoMes')">
+          <span class="kt">Resultado</span><span class="st-val ${resultado>=0?'pos':'neg'}">${fmt(resultado)}</span>
+        </div>
+      </div>
+    </div>`;
+  // Cards secundários (aparecem no desktop; no celular ficam ocultos, pois já há painéis
+  // próprios de Cartões, Pé de Meia e Dívidas logo abaixo).
+  const secundarios = [
     {key:'cartao', label:'Fatura Cartão (em aberto)', value: fmt(faturaTotal), cls:'warn'},
     {key:'investimento', label:'Total no Pé de Meia', value: fmt(totalInvest), cls:'pos'},
     {key:'divida', label:'Total em Dívidas', value: fmt(totalDividas), cls:'neg'},
   ];
-  document.getElementById('summaryCards').innerHTML = cards.map(c => `
+  const secHtml = secundarios.map(c => `
     <div class="card clickable" data-key="${c.key}" onclick="abrirRazao('${c.key}')">
       <div class="label">${c.label}</div>
       <div class="value ${c.cls}">${c.value}</div>
     </div>
   `).join('');
+  document.getElementById('summaryCards').innerHTML = heroHtml + secHtml;
 }
 
 function detalheFor(item){
@@ -4031,26 +4152,54 @@ function renderCartoesPanel(){
   if(cartoes.length === 0){
     list.innerHTML = '<div class="empty">Nenhum cartão cadastrado.</div>';
   } else {
-    list.innerHTML = cartoes.map((c, idx) => {
-      const metaPartes = [];
-      if(c.vencimento) metaPartes.push('Vence ' + fmtDate(c.vencimento));
+    // A maior fatura em aberto vira o card de destaque; os demais cartões vão para a lista.
+    const porTotal = cartoes.map((c, idx) => ({ c, idx })).sort((a,b) => b.c.total - a.c.total);
+    const destaque = (porTotal[0] && porTotal[0].c.total > 0) ? porTotal[0] : null;
+    let html = '';
+
+    if(destaque){
+      const c = destaque.c, idx = destaque.idx;
       const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const arquivo = arquivoLogoBanco(c.nome);
+      const logoBloco = arquivo
+        ? `<span class="cf-logo"><img src="icons/bancos/${arquivo}" alt="${c.nome||''}"></span>`
+        : `<span class="cf-logo-nome">${c.nome || 'Cartão'}</span>`;
+      const vencPill = c.vencimento ? `<span class="cf-venc">Vence ${fmtDate(c.vencimento)}</span>` : '';
+      const btnVer = c.latestId ? `<button class="cf-btn-ghost" onclick="abrirRazao('cartao', '${nomeEscapado}')">Ver compras</button>` : '';
+      html += `
+        <div class="cartao-featured">
+          <div class="cf-top">${logoBloco}${vencPill}</div>
+          <div class="cf-kicker">Fatura em aberto${c.nome ? ' · ' + (c.nome||'') : ''}</div>
+          <div class="cf-val blur-target">${fmt(c.total)}</div>
+          <div class="cf-actions">
+            <button onclick="pagarFatura(${idx})">Pagar fatura</button>
+            ${btnVer}
+          </div>
+        </div>`;
+    }
+
+    const demais = cartoes.map((c, idx) => ({ c, idx })).filter(o => !destaque || o.idx !== destaque.idx);
+    html += demais.map(({ c, idx }) => {
+      const nomeEscapado = (c.nome || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const meta = c.vencimento ? 'Vence ' + fmtDate(c.vencimento) : (c.total <= 0 ? 'Em dia' : '');
       const btnEditar = c.latestId ? `<button class="cartao-acao" onclick="abrirRazao('cartao', '${nomeEscapado}')" title="Ver lançamentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>` : '';
-      const btnPagar = c.total > 0 ? `<button class="cartao-acao" onclick="pagarFatura(${idx})" title="Pagar fatura">$</button>` : '<span class="quitada-tag">Em dia ✓</span>';
+      const direita = c.total > 0
+        ? `<span class="neg blur-target" style="font-weight:600; margin-right:6px;">${fmt(c.total)}</span><button class="cartao-acao" onclick="pagarFatura(${idx})" title="Pagar fatura">$</button>`
+        : '<span class="quitada-tag">Em dia ✓</span>';
       return `
       <div class="list-item">
         <div>
-          <div>${nomeOuLogoHtml(c.nome)}</div>
-          <div class="meta">${metaPartes.join(' • ')}</div>
+          <div class="cartao-nome-linha">${logoENomeHtml(c.nome)}</div>
+          <div class="meta">${meta}</div>
         </div>
         <div class="actions">
-          <span class="info" style="margin-right:6px;">${fmt(c.total)}</span>
-          ${btnPagar}
+          ${direita}
           ${btnEditar}
         </div>
-      </div>
-    `;
+      </div>`;
     }).join('');
+
+    list.innerHTML = html;
   }
   const total = cartoes.reduce((s,c)=>s+Number(c.total),0);
   document.getElementById('cartoesTotal').textContent = fmt(total);
