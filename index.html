@@ -158,12 +158,18 @@
   .cartao-featured .cf-logo img{max-width:80%; max-height:80%; object-fit:contain;}
   .cartao-featured .cf-logo-nome{font-weight:700; font-size:1.05rem;}
   .cartao-featured .cf-venc{font-size:0.72rem; font-weight:600; color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%, transparent); padding:4px 10px; border-radius:20px; white-space:nowrap;}
-  .cf-venc-wrap{position:relative; display:inline-flex;}
-  .cartao-featured button.cf-venc{border:1px solid color-mix(in srgb,var(--yellow) 40%, transparent); cursor:pointer; display:inline-flex; align-items:center; gap:5px; line-height:1;}
-  .cartao-featured button.cf-venc:hover{background:color-mix(in srgb,var(--yellow) 26%, transparent);}
-  .cartao-featured button.cf-venc svg{width:12px; height:12px; opacity:0.85;}
-  /* Input de data que dispara o seletor nativo — fica por cima da pílula, invisível. */
-  .cf-venc-hidden{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; margin:0; cursor:pointer; color-scheme:dark;}
+  /* Pílula de vencimento editável: o próprio <input type="date"> fica visível e estilizado
+     como a pílula amarela, para o seletor nativo abrir de forma confiável (inputs invisíveis
+     ou com opacidade 0 fazem alguns navegadores mobile fechar o seletor na hora). */
+  label.cf-venc{display:inline-flex; align-items:center; gap:5px; cursor:pointer; border:1px solid color-mix(in srgb,var(--yellow) 40%, transparent); line-height:1;}
+  label.cf-venc:hover{background:color-mix(in srgb,var(--yellow) 26%, transparent);}
+  label.cf-venc .cf-venc-label{white-space:nowrap;}
+  label.cf-venc input[type="date"]{
+    background:transparent; border:0; padding:0; margin:0; color:var(--yellow);
+    font-size:0.72rem; font-weight:600; font-family:inherit; cursor:pointer;
+    color-scheme:dark; min-width:0;
+  }
+  label.cf-venc input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.85; cursor:pointer;}
   .cartao-featured .cf-kicker{font-size:0.66rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
   .cartao-featured .cf-val{font-size:1.7rem; font-weight:700; color:var(--text); margin:4px 0 14px;}
   .cartao-featured .cf-actions{display:flex; gap:10px;}
@@ -2842,13 +2848,6 @@ function pagarFatura(idx){
   renderAll();
 }
 
-// Abre o seletor de data nativo a partir da pílula "Vence" da fatura em destaque.
-function abrirPickerVenc(btn){
-  const input = btn.parentNode.querySelector('input[type="date"]');
-  if(!input) return;
-  try{ input.showPicker(); }
-  catch(e){ input.focus(); input.click(); }
-}
 // Salva o vencimento escolhido para (cartão, mês) da fatura em destaque.
 function salvarVencPicker(input){
   const nome = input.getAttribute('data-cartao');
@@ -4280,12 +4279,10 @@ function renderCartoesPanel(){
         ? `<span class="cf-logo"><img src="icons/bancos/${arquivo}" alt="${c.nome||''}"></span>`
         : `<span class="cf-logo-nome">${c.nome || 'Cartão'}</span>`;
       const vencAttrNome = (c.nome || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-      const vencLabel = c.vencimento ? 'Vence ' + fmtDate(c.vencimento) : 'Definir vencimento';
-      const calSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
-      const vencPill = `<span class="cf-venc-wrap">
-        <button type="button" class="cf-venc" onclick="abrirPickerVenc(this)" title="Toque para alterar o vencimento da fatura deste mês">${vencLabel}${calSvg}</button>
-        <input type="date" class="cf-venc-hidden" value="${c.vencimento || ''}" data-cartao="${vencAttrNome}" data-mes="${mesRefVenc}" onchange="salvarVencPicker(this)" tabindex="-1" aria-label="Vencimento da fatura">
-      </span>`;
+      const vencPill = `<label class="cf-venc" title="Toque para definir/alterar o vencimento da fatura deste mês">
+        <span class="cf-venc-label">Vence</span>
+        <input type="date" value="${c.vencimento || ''}" data-cartao="${vencAttrNome}" data-mes="${mesRefVenc}" onchange="salvarVencPicker(this)" aria-label="Vencimento da fatura">
+      </label>`;
       const btnVer = c.latestId ? `<button class="cf-btn-ghost" onclick="abrirRazao('cartao', '${nomeEscapado}')">Ver compras</button>` : '';
       const emAberto = c.total > 0;
       const valorBloco = emAberto
