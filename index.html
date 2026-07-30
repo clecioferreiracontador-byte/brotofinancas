@@ -158,6 +158,12 @@
   .cartao-featured .cf-logo img{max-width:80%; max-height:80%; object-fit:contain;}
   .cartao-featured .cf-logo-nome{font-weight:700; font-size:1.05rem;}
   .cartao-featured .cf-venc{font-size:0.72rem; font-weight:600; color:var(--yellow); background:color-mix(in srgb,var(--yellow) 16%, transparent); padding:4px 10px; border-radius:20px; white-space:nowrap;}
+  .cf-venc-wrap{position:relative; display:inline-flex;}
+  .cartao-featured button.cf-venc{border:1px solid color-mix(in srgb,var(--yellow) 40%, transparent); cursor:pointer; display:inline-flex; align-items:center; gap:5px; line-height:1;}
+  .cartao-featured button.cf-venc:hover{background:color-mix(in srgb,var(--yellow) 26%, transparent);}
+  .cartao-featured button.cf-venc svg{width:12px; height:12px; opacity:0.85;}
+  /* Input de data que dispara o seletor nativo — fica por cima da pílula, invisível. */
+  .cf-venc-hidden{position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; margin:0; cursor:pointer; color-scheme:dark;}
   .cartao-featured .cf-kicker{font-size:0.66rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
   .cartao-featured .cf-val{font-size:1.7rem; font-weight:700; color:var(--text); margin:4px 0 14px;}
   .cartao-featured .cf-actions{display:flex; gap:10px;}
@@ -846,7 +852,7 @@
       <div class="hint" style="text-align:right; margin-top:2px;"><span id="orcamentoTotalPct"></span></div>
     </div>
     <div class="hint" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;">
-      <span>Orçamento por categoria (despesas + lançamentos de cartão)</span>
+      <span>Orçamento por categoria (despesas e compras no cartão do mês)</span>
       <button type="button" class="secondary iconbtn" onclick="incluirCategoriaOrcamento()" title="Incluir de volta uma despesa excluída do orçamento">+</button>
     </div>
     <div id="orcamentoCategoriasList"></div>
@@ -2637,7 +2643,7 @@ function updateFormFieldsVisibility(tipo){
     fieldCategoria: tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao',
     fieldCartaoNome: mostrarCartaoNome,
     fieldLimite: tipo === 'cartao',
-    fieldVencimento: tipo === 'cartao' || tipo === 'divida',
+    fieldVencimento: tipo === 'divida',
     fieldParcelas: tipo === 'divida' || tipo === 'cartao',
     fieldTipoInvestimento: tipo === 'investimento',
     fieldMetaInvestimento: tipo === 'investimento',
@@ -2737,6 +2743,25 @@ function calcularSaldoContaCorrente(){
 // mesFiltro (opcional, "AAAA-MM"): quando informado, só conta compras com vencimento até esse
 // mês (parcelas futuras ficam de fora) e pagamentos feitos até esse mês — dá pra ver a fatura
 // em aberto "como estava" num mês de referência, em vez de sempre o total corrente.
+// Vencimento da fatura é por (cartão, mês) e o usuário define/edita direto na fatura
+// (pílula "Vence" no painel de cartões) — não é mais um campo por compra.
+function vencimentoCartaoParaMes(nome, monthKey){
+  if(!monthKey) return null;
+  const porCartao = (data.cartaoVencimentos || {})[nome];
+  if(porCartao && porCartao[monthKey]) return porCartao[monthKey];
+  // Compatibilidade com dados antigos: usa o vencimento que já estava gravado numa
+  // compra desse mês, se houver, até o usuário definir um manualmente.
+  const compraComVenc = data.lancamentos.find(l => l.tipo === 'cartao' && (l.nome || 'Cartão') === nome && l.vencimento && l.data && l.data.slice(0,7) === monthKey);
+  return compraComVenc ? compraComVenc.vencimento : null;
+}
+function setVencimentoCartaoMes(nome, monthKey, dateStr){
+  if(!monthKey) return;
+  if(!data.cartaoVencimentos) data.cartaoVencimentos = {};
+  if(!data.cartaoVencimentos[nome]) data.cartaoVencimentos[nome] = {};
+  if(dateStr) data.cartaoVencimentos[nome][monthKey] = dateStr;
+  else delete data.cartaoVencimentos[nome][monthKey];
+}
+
 function cartoesAgrupados(mesFiltro){
   let compras = data.lancamentos.filter(l => l.tipo === 'cartao');
   let pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
@@ -2753,20 +2778,16 @@ function cartoesAgrupados(mesFiltro){
     const saldoAberto = totalComprado - totalPago;
     const maisRecenteCompra = comprasDoNome.length ? comprasDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     const maisRecentePagamento = pagamentosDoNome.length ? pagamentosDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
-    // Vencimento não é obrigatório em cada lançamento — se a compra mais recente não tiver
-    // um preenchido, cai pra compra mais recente do mesmo cartão que tenha, em vez de mostrar
-    // "sem vencimento" mesmo quando o cartão já teve um informado antes.
-    const comprasComVencimento = comprasDoNome.filter(l => l.vencimento);
-    const maisRecenteComVencimento = comprasComVencimento.length
-      ? comprasComVencimento.reduce((a,b)=>(b.data>=a.data?b:a))
-      : null;
+    // O vencimento mostrado é o da fatura do mês de referência (definido pelo usuário na
+    // própria fatura). Sem filtro de mês, usa o mês atual como referência.
+    const mesRefVenc = mesFiltro || currentMonthKey();
     return {
       nome,
       total: saldoAberto,
       totalComprado,
       totalPago,
       limite: maisRecenteCompra ? maisRecenteCompra.limite : null,
-      vencimento: maisRecenteComVencimento ? maisRecenteComVencimento.vencimento : null,
+      vencimento: vencimentoCartaoParaMes(nome, mesRefVenc),
       dataUltimoLancamento: maisRecenteCompra ? maisRecenteCompra.data : (maisRecentePagamento ? maisRecentePagamento.data : null),
       latestId: maisRecenteCompra ? maisRecenteCompra.id : null,
       qtdLancamentos: comprasDoNome.length
@@ -2821,6 +2842,22 @@ function pagarFatura(idx){
   renderAll();
 }
 
+// Abre o seletor de data nativo a partir da pílula "Vence" da fatura em destaque.
+function abrirPickerVenc(btn){
+  const input = btn.parentNode.querySelector('input[type="date"]');
+  if(!input) return;
+  try{ input.showPicker(); }
+  catch(e){ input.focus(); input.click(); }
+}
+// Salva o vencimento escolhido para (cartão, mês) da fatura em destaque.
+function salvarVencPicker(input){
+  const nome = input.getAttribute('data-cartao');
+  const mes = input.getAttribute('data-mes');
+  setVencimentoCartaoMes(nome, mes, input.value || '');
+  saveData();
+  renderAll();
+}
+
 // ---------- Orçamento do Mês ----------
 function getOrcamentoMes(monthKey){
   if(!data.orcamentos) data.orcamentos = {};
@@ -2830,7 +2867,10 @@ function getOrcamentoMes(monthKey){
 }
 
 function gastoPorCategoriaNoMes(monthKey){
-  const itens = data.lancamentos.filter(l => (l.tipo === 'despesa' || l.tipo === 'cartao') && itemInMonth(l, monthKey));
+  // As compras no cartão do mês contam no orçamento, cada uma na sua categoria. Só o
+  // pagamento da fatura (despesa na categoria "Cartão de Crédito") fica de fora, para não
+  // contar em dobro o que já entrou como compra — a fatura é acompanhada no painel de cartões.
+  const itens = data.lancamentos.filter(l => (l.tipo === 'cartao' || l.tipo === 'despesa') && l.categoria !== 'Cartão de Crédito' && itemInMonth(l, monthKey));
   const porCat = {};
   itens.forEach(l => {
     const cat = l.categoria || 'Outros';
@@ -3154,7 +3194,7 @@ function renderOrcamento(){
 
   const excluidas = data.orcamentoCategoriasExcluidas || [];
   const todasCategorias = [...new Set(CATEGORIAS_DESPESA.concat(data.categoriasDespesa||[]).concat(Object.keys(gastoPorCat)))]
-    .filter(cat => !excluidas.includes(cat));
+    .filter(cat => cat !== 'Cartão de Crédito' && !excluidas.includes(cat));
   const list = document.getElementById('orcamentoCategoriasList');
   list.innerHTML = todasCategorias.map(cat => {
     const limite = orc.categorias[cat] || 0;
@@ -3794,14 +3834,19 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
     if(razaoFiltroNome){
       itens = itens.filter(l => l.nome === razaoFiltroNome);
-      const cartaoInfo = cartoesAgrupados().find(c => c.nome === razaoFiltroNome);
-      titulo = 'Razão — Cartão ' + razaoFiltroNome;
-      total = cartaoInfo ? cartaoInfo.total : 0;
+      // Fatura do mês selecionado: mesmo que o cartão tenha lançamentos em vários meses,
+      // mostra só os do mês de referência (ex.: agosto → só lançamentos de agosto).
+      const mesRef = mesFiltroCartoesAtivo() || monthKey;
+      if(mesRef) itens = itens.filter(l => l.data && l.data.slice(0,7) === mesRef);
+      const mesLabelRef = mesRef ? mesRef.split('-').reverse().join('/') : '';
+      titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (' + mesLabelRef + ')' : '');
+      total = itens.filter(l => l.tipo === 'cartao').reduce((s,l)=>s+Number(l.valor),0);
+      totalLabel = 'Total da fatura do mês';
     } else {
       titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
       total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
+      totalLabel = 'Faturas em aberto';
     }
-    totalLabel = 'Faturas em aberto';
   } else if(key === 'divida'){
     itens = data.lancamentos.filter(l=>l.tipo==='divida');
     titulo = 'Razão — Dívidas';
@@ -4209,6 +4254,7 @@ function renderCartoesPanel(){
     : 'Ver faturas até um mês de referência';
   filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!localValor);
   const mesFiltro = mesFiltroCartoesAtivo();
+  const mesRefVenc = mesFiltro || currentMonthKey();
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
@@ -4233,7 +4279,13 @@ function renderCartoesPanel(){
       const logoBloco = arquivo
         ? `<span class="cf-logo"><img src="icons/bancos/${arquivo}" alt="${c.nome||''}"></span>`
         : `<span class="cf-logo-nome">${c.nome || 'Cartão'}</span>`;
-      const vencPill = c.vencimento ? `<span class="cf-venc">Vence ${fmtDate(c.vencimento)}</span>` : '';
+      const vencAttrNome = (c.nome || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      const vencLabel = c.vencimento ? 'Vence ' + fmtDate(c.vencimento) : 'Definir vencimento';
+      const calSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+      const vencPill = `<span class="cf-venc-wrap">
+        <button type="button" class="cf-venc" onclick="abrirPickerVenc(this)" title="Toque para alterar o vencimento da fatura deste mês">${vencLabel}${calSvg}</button>
+        <input type="date" class="cf-venc-hidden" value="${c.vencimento || ''}" data-cartao="${vencAttrNome}" data-mes="${mesRefVenc}" onchange="salvarVencPicker(this)" tabindex="-1" aria-label="Vencimento da fatura">
+      </span>`;
       const btnVer = c.latestId ? `<button class="cf-btn-ghost" onclick="abrirRazao('cartao', '${nomeEscapado}')">Ver compras</button>` : '';
       const emAberto = c.total > 0;
       const valorBloco = emAberto
@@ -4307,7 +4359,7 @@ document.getElementById('lancForm').addEventListener('submit', function(e){
     descricao: document.getElementById('lancDescricao').value.trim(),
     nome: usaCartaoNome ? (document.getElementById('lancCartaoNome').value.trim() || null) : null,
     limite: tipo === 'cartao' ? (parseFloat(document.getElementById('lancLimite').value) || 0) : null,
-    vencimento: (tipo === 'cartao' || tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
+    vencimento: (tipo === 'divida') ? document.getElementById('lancVencimento').value : null,
     parcelas: tipo === 'divida' ? (parseInt(document.getElementById('lancParcelas').value) || null) : null,
     tipoInvestimento: tipo === 'investimento' ? document.getElementById('lancTipoInvestimento').value : null,
     meta: tipo === 'investimento' ? (document.getElementById('lancMetaInvestimento').value || null) : null,
