@@ -941,20 +941,27 @@
 </div>
 
 <div id="relatorioModal" class="page-view">
-  <div class="modal-card view-card" style="max-width:460px;">
+  <div class="modal-card view-card" style="max-width:340px;">
     <div class="modal-header">
       <h3>Relatório do mês</h3>
       <button class="secondary small" onclick="irHome()">Voltar</button>
     </div>
-    <div class="hint" style="margin-bottom:14px;">Escolha um mês ou um período de meses acumulados e baixe um resumo de como foi o seu mês: receitas, despesas por categoria, cartão, pé de meia e orçamento.</div>
+    <div class="hint" style="margin-bottom:14px;">Escolha um período (por mês ou por dia) e baixe um resumo de como foi: receitas, despesas por categoria, cartão, pé de meia e orçamento.</div>
     <form class="inline" onsubmit="return false;">
       <div class="field">
+        <label>Ver por</label>
+        <select id="relatorioModoPeriodo" class="mini-cal-input" onchange="alternarModoPeriodoRelatorio()">
+          <option value="mes">Mês</option>
+          <option value="dia">Dia</option>
+        </select>
+      </div>
+      <div class="field">
         <label>De</label>
-        <input type="month" id="relatorioMesDe">
+        <input type="month" id="relatorioMesDe" class="mini-cal-input">
       </div>
       <div class="field">
         <label>Até</label>
-        <input type="month" id="relatorioMesAte">
+        <input type="month" id="relatorioMesAte" class="mini-cal-input">
       </div>
     </form>
     <div class="hint" id="relatorioErro" style="margin:0 0 4px;"></div>
@@ -2967,29 +2974,64 @@ function gastoPorCategoriaNoMes(monthKey){
 function abrirRelatorioMensal(){
   closeAccountMenu();
   const mk = currentMonthKey();
-  document.getElementById('relatorioMesDe').value = mk;
-  document.getElementById('relatorioMesAte').value = mk;
+  document.getElementById('relatorioModoPeriodo').value = 'mes';
+  const de = document.getElementById('relatorioMesDe');
+  const ate = document.getElementById('relatorioMesAte');
+  de.type = 'month'; ate.type = 'month';
+  de.value = mk; ate.value = mk;
   document.getElementById('relatorioErro').textContent = '';
   document.getElementById('relatorioErro').style.color = '';
   mostrarView('relatorioModal');
 }
 
+// Troca os campos De/Até entre seletor de mês e de dia, conforme a pessoa escolhe "Ver por"
+// no Relatório do mês. Preenche com um valor padrão sensato pro tipo escolhido.
+function alternarModoPeriodoRelatorio(){
+  const modo = document.getElementById('relatorioModoPeriodo').value;
+  const de = document.getElementById('relatorioMesDe');
+  const ate = document.getElementById('relatorioMesAte');
+  const tipo = modo === 'dia' ? 'date' : 'month';
+  de.type = tipo;
+  ate.type = tipo;
+  const valorPadrao = modo === 'dia' ? new Date().toISOString().slice(0,10) : currentMonthKey();
+  de.value = valorPadrao;
+  ate.value = valorPadrao;
+  document.getElementById('relatorioErro').textContent = '';
+  document.getElementById('relatorioErro').style.color = '';
+}
+
+// Último dia (YYYY-MM-DD) de um mês (YYYY-MM) — usado pra fechar o intervalo do modo "Mês"
+// num range de datas cheias, igual ao modo "Dia".
+function ultimoDiaDoMes(mesKey){
+  const [y, m] = mesKey.split('-').map(Number);
+  const ultimo = new Date(y, m, 0).getDate();
+  return mesKey + '-' + String(ultimo).padStart(2, '0');
+}
+
 function periodoRelatorioValido(){
+  const modo = document.getElementById('relatorioModoPeriodo').value;
   const de = document.getElementById('relatorioMesDe').value;
   const ate = document.getElementById('relatorioMesAte').value;
   const erroEl = document.getElementById('relatorioErro');
+  const unidade = modo === 'dia' ? 'dia' : 'mês';
   if(!de || !ate){
-    erroEl.textContent = 'Escolha o mês (ou período) do relatório.';
+    erroEl.textContent = 'Escolha o ' + unidade + ' (ou período) do relatório.';
     erroEl.style.color = 'var(--red)';
     return null;
   }
   if(ate < de){
-    erroEl.textContent = 'O mês final não pode ser antes do inicial.';
+    erroEl.textContent = 'O ' + unidade + ' final não pode ser antes do inicial.';
     erroEl.style.color = 'var(--red)';
     return null;
   }
   erroEl.textContent = '';
-  return { de, ate };
+  const dataInicio = modo === 'dia' ? de : (de + '-01');
+  const dataFim = modo === 'dia' ? ate : ultimoDiaDoMes(ate);
+  const label = modo === 'dia'
+    ? (de === ate ? fmtDate(de) : (fmtDate(de) + ' a ' + fmtDate(ate)))
+    : (de === ate ? fmtMonthKey(de) : (fmtMonthKey(de) + ' a ' + fmtMonthKey(ate)));
+  const nomeBase = de + (ate !== de ? '_a_' + ate : '');
+  return { modo, de, ate, dataInicio, dataFim, label, nomeBase };
 }
 
 function agruparPorCampo(lista, campo, rotuloVazio){
@@ -3001,12 +3043,13 @@ function agruparPorCampo(lista, campo, rotuloVazio){
   return Object.entries(porGrupo).sort((a,b) => b[1] - a[1]);
 }
 
-// Reúne tudo que entra no relatório para o período (um mês ou vários meses acumulados,
-// de "mesInicio" até "mesFim", inclusive).
-function coletarDadosRelatorio(mesInicio, mesFim){
-  const meses = gerarMesesEntre(mesInicio, mesFim);
-  const setMeses = new Set(meses);
-  const itens = data.lancamentos.filter(l => l.data && setMeses.has(l.data.slice(0,7)));
+// Reúne tudo que entra no relatório para o período — de "dataInicio" até "dataFim" (datas
+// cheias, YYYY-MM-DD), inclusive. Funciona tanto pro modo "Mês" (dataInicio/dataFim já vêm
+// como o primeiro/último dia dos meses escolhidos) quanto pro modo "Dia" (datas exatas). O
+// orçamento é sempre mensal, então usa os meses tocados pelo intervalo como aproximação.
+function coletarDadosRelatorio(dataInicio, dataFim){
+  const meses = gerarMesesEntre(dataInicio.slice(0,7), dataFim.slice(0,7));
+  const itens = data.lancamentos.filter(l => l.data && l.data >= dataInicio && l.data <= dataFim);
 
   const receitas = itens.filter(l => l.tipo === 'receita');
   const despesas = itens.filter(l => l.tipo === 'despesa');
@@ -3038,12 +3081,8 @@ function coletarDadosRelatorio(mesInicio, mesFim){
   };
 }
 
-function labelPeriodoRelatorio(de, ate){
-  return de === ate ? fmtMonthKey(de) : (fmtMonthKey(de) + ' a ' + fmtMonthKey(ate));
-}
-
-function nomeArquivoRelatorio(de, ate, extensao){
-  return 'relatorio-' + de + (ate !== de ? '_a_' + ate : '') + '.' + extensao;
+function nomeArquivoRelatorio(nomeBase, extensao){
+  return 'relatorio-' + nomeBase + '.' + extensao;
 }
 
 // Estilos de tabela do PDF do relatório, espelhando a paleta clara/escura do app (var(--...)
@@ -3072,8 +3111,8 @@ async function gerarRelatorioPDF(){
   try{
     const JsPDF = await carregarJsPDF();
     const logo = await carregarLogoRelatorio().catch(() => null);
-    const r = coletarDadosRelatorio(periodo.de, periodo.ate);
-    const tituloPeriodo = labelPeriodoRelatorio(periodo.de, periodo.ate);
+    const r = coletarDadosRelatorio(periodo.dataInicio, periodo.dataFim);
+    const tituloPeriodo = periodo.label;
     const doc = new JsPDF();
 
     // Segue o tema (claro/escuro) que a pessoa está usando no app no momento de gerar o PDF.
@@ -3154,7 +3193,7 @@ async function gerarRelatorioPDF(){
       }));
     }
 
-    doc.save(nomeArquivoRelatorio(periodo.de, periodo.ate, 'pdf'));
+    doc.save(nomeArquivoRelatorio(periodo.nomeBase, 'pdf'));
     erroEl.textContent = 'PDF baixado!';
     erroEl.style.color = 'var(--green)';
   }catch(e){
@@ -3171,8 +3210,8 @@ async function gerarRelatorioExcel(){
   erroEl.style.color = '';
   try{
     const XLSX = await carregarXLSX();
-    const r = coletarDadosRelatorio(periodo.de, periodo.ate);
-    const tituloPeriodo = labelPeriodoRelatorio(periodo.de, periodo.ate);
+    const r = coletarDadosRelatorio(periodo.dataInicio, periodo.dataFim);
+    const tituloPeriodo = periodo.label;
 
     const wb = XLSX.utils.book_new();
     const resumoAoa = [
@@ -3214,7 +3253,7 @@ async function gerarRelatorioExcel(){
     );
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lancAoa), 'Lançamentos');
 
-    XLSX.writeFile(wb, nomeArquivoRelatorio(periodo.de, periodo.ate, 'xlsx'));
+    XLSX.writeFile(wb, nomeArquivoRelatorio(periodo.nomeBase, 'xlsx'));
     erroEl.textContent = 'Excel baixado!';
     erroEl.style.color = 'var(--green)';
   }catch(e){
