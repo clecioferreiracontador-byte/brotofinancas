@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- Sem isso, apps adicionados à Tela de Início no iOS (modo standalone) tendem a guardar esse
+     HTML em cache por muito tempo e só buscam a versão nova em raras ocasiões — daí a pessoa
+     continuar vendo telas antigas mesmo depois de fechar/reabrir o app várias vezes. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Broto</title>
 <link rel="manifest" href="manifest.json?v=5">
 <link rel="icon" href="icons/icon-32.png?v=5" type="image/png" sizes="32x32">
