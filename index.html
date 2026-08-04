@@ -351,6 +351,12 @@
   .modal-close-btn svg{ width:20px; height:20px; }
   .modal-header-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .mini-cal-input{ min-width:0; width:130px; height:32px; padding:4px 8px; font-size:0.78rem; }
+  /* Relatório do mês: força os 3 campos (Ver por / De / Até) a terem exatamente a mesma
+     largura sempre — alguns navegadores mobile dão um "tamanho nativo" um pouco diferente pra
+     <select> vs <input type=month/date>, então isso evita que um fique mais largo que o outro. */
+  #relatorioModoPeriodo, #relatorioMesDe, #relatorioMesAte{
+    display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box;
+  }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
@@ -941,7 +947,7 @@
 </div>
 
 <div id="relatorioModal" class="page-view">
-  <div class="modal-card view-card" style="max-width:340px; width:85%; margin:0 auto 24px; float:none;">
+  <div class="modal-card view-card" style="max-width:340px; width:85%; margin:0 auto 24px; float:none; overflow-x:hidden; box-sizing:border-box;">
     <div class="modal-header">
       <h3>Relatório do mês</h3>
       <button class="secondary small" onclick="irHome()">Voltar</button>
