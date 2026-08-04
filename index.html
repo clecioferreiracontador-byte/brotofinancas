@@ -71,9 +71,13 @@
 
   /* Card de destaque do saldo (topo da Home): saldo grande e centralizado, com Receitas /
      Despesas / Resultado do mês em três colunas logo abaixo, cada uma clicável para o Razão. */
-  .card.saldo-hero{ grid-column:1 / -1; text-align:center; padding:22px 18px; }
+  .card.saldo-hero{ grid-column:1 / -1; text-align:center; padding:22px 18px; position:relative; }
   .card.saldo-hero .label{ letter-spacing:.06em; }
   .card.saldo-hero .value{ font-size:2rem; margin-top:8px; }
+  /* Calendário pequeno no canto superior direito do card de saldo, pra trocar o mês
+     (receitas/despesas/resultado) sem sair da Home — inclusive no celular, onde o seletor
+     de mês ao lado da foto some (.home-mes-input{display:none}). */
+  .saldo-hero-cal-wrap{ position:absolute; top:12px; right:12px; display:inline-flex; align-items:center; justify-content:center; }
   .saldo-hero-stats{ display:flex; justify-content:center; align-items:stretch; gap:0; margin-top:18px; }
   .saldo-hero-stats > .st{ flex:1; max-width:150px; display:flex; flex-direction:column; gap:4px; padding:0 8px; cursor:pointer; }
   .saldo-hero-stats > .st:hover .kt{ color:var(--text); }
@@ -804,6 +808,10 @@
       <span class="ami-icon" id="temaMenuIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span>
       <span id="temaMenuLabel">Modo claro</span>
     </button>
+    <button type="button" class="account-menu-item" onclick="abrirRelatorioMensal()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4"/></svg></span>
+      Relatório do mês
+    </button>
     <button type="button" class="account-menu-item" id="installAppBtn" style="display:none;">
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
       Instalar app
@@ -869,13 +877,12 @@
   <div class="modal-card view-card" style="max-width:520px;">
     <div class="modal-header">
       <h3>Provisões (receitas/despesas futuras)</h3>
-      <button class="secondary small" onclick="irHome()">Voltar</button>
+      <div class="modal-header-right">
+        <input type="month" id="provisaoMesInput" class="mini-cal-input" title="Mês de referência (para avaliar o orçamento previsto)" onchange="renderProvisoes()">
+        <button class="secondary small" onclick="irHome()">Voltar</button>
+      </div>
     </div>
     <div class="month-filter">
-      <span style="display:flex; align-items:center; gap:8px;">
-        <label style="color:var(--muted); font-size:0.85rem; white-space:nowrap;">Mês de referência:</label>
-        <input type="month" id="provisaoMesInput" onchange="renderProvisoes()">
-      </span>
       <span style="display:flex; align-items:center; gap:6px;">
         <label style="color:var(--muted); font-size:0.85rem; white-space:nowrap;">Venc.:</label>
         <input type="date" id="provisaoVencimento" class="mini-cal-input" form="provisaoForm" required>
@@ -929,6 +936,31 @@
     <button type="button" class="secondary small" id="toggleProvisoesListBtn" onclick="toggleProvisoesList()">Ver lançamentos de provisões</button>
     <div id="provisoesListWrap" style="display:none; margin-top:10px;">
       <div id="provisoesList"></div>
+    </div>
+  </div>
+</div>
+
+<div id="relatorioModal" class="page-view">
+  <div class="modal-card view-card" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Relatório do mês</h3>
+      <button class="secondary small" onclick="irHome()">Voltar</button>
+    </div>
+    <div class="hint" style="margin-bottom:14px;">Escolha um mês ou um período de meses acumulados e baixe um resumo de como foi o seu mês: receitas, despesas por categoria, cartão, pé de meia e orçamento.</div>
+    <div class="inline" style="display:flex; gap:10px;">
+      <div class="field">
+        <label>De</label>
+        <input type="month" id="relatorioMesDe">
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="month" id="relatorioMesAte">
+      </div>
+    </div>
+    <div class="hint" id="relatorioErro" style="margin:10px 0 4px;"></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      <button type="button" onclick="gerarRelatorioPDF()">Baixar PDF</button>
+      <button type="button" class="secondary" onclick="gerarRelatorioExcel()">Baixar Excel</button>
     </div>
   </div>
 </div>
@@ -1626,7 +1658,7 @@ atualizarLabelTema();
 
 // As páginas abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos) substituem
 // a Home em vez de flutuar por cima dela — só uma fica visível por vez, e o botão Home volta para o painel.
-const VIEW_IDS = ['homeView', 'lancamentosModal', 'orcamentoModal', 'provisoesModal', 'extratosModal'];
+const VIEW_IDS = ['homeView', 'lancamentosModal', 'orcamentoModal', 'provisoesModal', 'extratosModal', 'relatorioModal'];
 const BTN_ID_FOR_VIEW = {
   homeView: 'homeIconBtn',
   lancamentosModal: 'lancamentosIconBtn',
@@ -1819,6 +1851,46 @@ function carregarPdfJs(){
     document.head.appendChild(s);
   });
   return pdfjsCarregando;
+}
+
+// Carrega o jsPDF + plugin de tabelas sob demanda, só quando a pessoa baixa o Relatório do
+// mês em PDF (menu de 3 pontos). Fica em cache depois da primeira vez.
+let jsPdfCarregando = null;
+function carregarJsPDF(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if(jsPdfCarregando) return jsPdfCarregando;
+  jsPdfCarregando = new Promise((resolve, reject) => {
+    const s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+      s2.onload = () => {
+        if(window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+        else reject(new Error('jsPDF indisponível'));
+      };
+      s2.onerror = () => reject(new Error('Falha ao baixar o gerador de PDF (precisa de internet).'));
+      document.head.appendChild(s2);
+    };
+    s1.onerror = () => reject(new Error('Falha ao baixar o gerador de PDF (precisa de internet).'));
+    document.head.appendChild(s1);
+  });
+  return jsPdfCarregando;
+}
+
+// Carrega o SheetJS (xlsx) sob demanda, só quando a pessoa baixa o Relatório do mês em Excel.
+let xlsxCarregando = null;
+function carregarXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(xlsxCarregando) return xlsxCarregando;
+  xlsxCarregando = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => { if(window.XLSX) resolve(window.XLSX); else reject(new Error('XLSX indisponível')); };
+    s.onerror = () => reject(new Error('Falha ao baixar o gerador de Excel (precisa de internet).'));
+    document.head.appendChild(s);
+  });
+  return xlsxCarregando;
 }
 
 // Extrai o texto de um PDF reconstruindo as linhas: agrupa os pedaços de texto pela posição
@@ -2878,6 +2950,227 @@ function gastoPorCategoriaNoMes(monthKey){
   return porCat;
 }
 
+// ---------- Relatório do mês (menu de 3 pontos): resumo de um mês ou de vários meses
+// acumulados, exportado em PDF ou Excel. ----------
+function abrirRelatorioMensal(){
+  closeAccountMenu();
+  const mk = currentMonthKey();
+  document.getElementById('relatorioMesDe').value = mk;
+  document.getElementById('relatorioMesAte').value = mk;
+  document.getElementById('relatorioErro').textContent = '';
+  document.getElementById('relatorioErro').style.color = '';
+  mostrarView('relatorioModal');
+}
+
+function periodoRelatorioValido(){
+  const de = document.getElementById('relatorioMesDe').value;
+  const ate = document.getElementById('relatorioMesAte').value;
+  const erroEl = document.getElementById('relatorioErro');
+  if(!de || !ate){
+    erroEl.textContent = 'Escolha o mês (ou período) do relatório.';
+    erroEl.style.color = 'var(--red)';
+    return null;
+  }
+  if(ate < de){
+    erroEl.textContent = 'O mês final não pode ser antes do inicial.';
+    erroEl.style.color = 'var(--red)';
+    return null;
+  }
+  erroEl.textContent = '';
+  return { de, ate };
+}
+
+function agruparPorCampo(lista, campo, rotuloVazio){
+  const porGrupo = {};
+  lista.forEach(l => {
+    const chave = l[campo] || rotuloVazio;
+    porGrupo[chave] = (porGrupo[chave] || 0) + Number(l.valor);
+  });
+  return Object.entries(porGrupo).sort((a,b) => b[1] - a[1]);
+}
+
+// Reúne tudo que entra no relatório para o período (um mês ou vários meses acumulados,
+// de "mesInicio" até "mesFim", inclusive).
+function coletarDadosRelatorio(mesInicio, mesFim){
+  const meses = gerarMesesEntre(mesInicio, mesFim);
+  const setMeses = new Set(meses);
+  const itens = data.lancamentos.filter(l => l.data && setMeses.has(l.data.slice(0,7)));
+
+  const receitas = itens.filter(l => l.tipo === 'receita');
+  const despesas = itens.filter(l => l.tipo === 'despesa');
+  const cartao = itens.filter(l => l.tipo === 'cartao');
+  const investimentos = itens.filter(l => l.tipo === 'investimento');
+
+  const totalReceitas = receitas.reduce((s,l) => s + Number(l.valor), 0);
+  const totalDespesas = despesas.reduce((s,l) => s + Number(l.valor), 0);
+  const totalCartao = cartao.reduce((s,l) => s + Number(l.valor), 0);
+  const totalInvestido = investimentos.reduce((s,l) => s + Number(l.valor), 0);
+
+  let orcamentoTotal = 0;
+  let gastoOrcamento = 0;
+  meses.forEach(mk => {
+    orcamentoTotal += Number(getOrcamentoMes(mk).total) || 0;
+    gastoOrcamento += Object.values(gastoPorCategoriaNoMes(mk)).reduce((s,v) => s + v, 0);
+  });
+
+  return {
+    meses,
+    totalReceitas, totalDespesas, resultado: totalReceitas - totalDespesas,
+    totalCartao, totalInvestido,
+    orcamentoTotal, gastoOrcamento,
+    receitasPorCategoria: agruparPorCampo(receitas, 'categoria', 'Outros'),
+    despesasPorCategoria: agruparPorCampo(despesas, 'categoria', 'Outros'),
+    cartaoPorNome: agruparPorCampo(cartao, 'nome', 'Cartão'),
+    investimentosPorMeta: agruparPorCampo(investimentos, 'meta', 'Sem meta'),
+    itensOrdenados: itens.slice().sort((a,b) => a.data.localeCompare(b.data))
+  };
+}
+
+function labelPeriodoRelatorio(de, ate){
+  return de === ate ? fmtMonthKey(de) : (fmtMonthKey(de) + ' a ' + fmtMonthKey(ate));
+}
+
+function nomeArquivoRelatorio(de, ate, extensao){
+  return 'relatorio-' + de + (ate !== de ? '_a_' + ate : '') + '.' + extensao;
+}
+
+async function gerarRelatorioPDF(){
+  const periodo = periodoRelatorioValido();
+  if(!periodo) return;
+  const erroEl = document.getElementById('relatorioErro');
+  erroEl.textContent = 'Gerando PDF...';
+  erroEl.style.color = '';
+  try{
+    const JsPDF = await carregarJsPDF();
+    const r = coletarDadosRelatorio(periodo.de, periodo.ate);
+    const tituloPeriodo = labelPeriodoRelatorio(periodo.de, periodo.ate);
+    const doc = new JsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Relatório financeiro — ' + tituloPeriodo, 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), 14, 24);
+    doc.setTextColor(0);
+
+    doc.autoTable({
+      startY: 30,
+      head: [['Resumo do período', 'Valor']],
+      body: [
+        ['Receitas', fmt(r.totalReceitas)],
+        ['Despesas', fmt(r.totalDespesas)],
+        ['Resultado (Receitas - Despesas)', fmt(r.resultado)],
+        ['Compras no cartão', fmt(r.totalCartao)],
+        ['Investido (Pé de meia)', fmt(r.totalInvestido)],
+        ['Orçamento definido', fmt(r.orcamentoTotal)],
+        ['Gasto considerado no orçamento', fmt(r.gastoOrcamento)]
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [34,150,105] }
+    });
+    let y = doc.lastAutoTable.finalY + 10;
+
+    const secoes = [
+      ['Despesas por categoria', r.despesasPorCategoria],
+      ['Receitas por categoria', r.receitasPorCategoria],
+      ['Compras no cartão por cartão', r.cartaoPorNome],
+      ['Pé de meia por meta', r.investimentosPorMeta]
+    ];
+    secoes.forEach(([titulo, lista]) => {
+      if(!lista.length) return;
+      if(y > 260){ doc.addPage(); y = 18; }
+      doc.autoTable({ startY: y, head: [[titulo, 'Valor']], body: lista.map(([c,v]) => [c, fmt(v)]), theme: 'grid' });
+      y = doc.lastAutoTable.finalY + 10;
+    });
+
+    if(r.itensOrdenados.length){
+      doc.addPage();
+      doc.setFontSize(13);
+      doc.text('Lançamentos do período', 14, 18);
+      doc.autoTable({
+        startY: 24,
+        head: [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']],
+        body: r.itensOrdenados.map(l => [
+          fmtDate(l.data),
+          (TAG_INFO[l.tipo] || { label: l.tipo }).label,
+          l.categoria || '-',
+          l.descricao || '',
+          fmt(l.valor)
+        ]),
+        theme: 'striped',
+        styles: { fontSize: 8 }
+      });
+    }
+
+    doc.save(nomeArquivoRelatorio(periodo.de, periodo.ate, 'pdf'));
+    erroEl.textContent = 'PDF baixado!';
+    erroEl.style.color = 'var(--green)';
+  }catch(e){
+    erroEl.textContent = e.message || 'Erro ao gerar o PDF.';
+    erroEl.style.color = 'var(--red)';
+  }
+}
+
+async function gerarRelatorioExcel(){
+  const periodo = periodoRelatorioValido();
+  if(!periodo) return;
+  const erroEl = document.getElementById('relatorioErro');
+  erroEl.textContent = 'Gerando Excel...';
+  erroEl.style.color = '';
+  try{
+    const XLSX = await carregarXLSX();
+    const r = coletarDadosRelatorio(periodo.de, periodo.ate);
+    const tituloPeriodo = labelPeriodoRelatorio(periodo.de, periodo.ate);
+
+    const wb = XLSX.utils.book_new();
+    const resumoAoa = [
+      ['Relatório financeiro', tituloPeriodo],
+      [],
+      ['Resumo do período', 'Valor'],
+      ['Receitas', r.totalReceitas],
+      ['Despesas', r.totalDespesas],
+      ['Resultado (Receitas - Despesas)', r.resultado],
+      ['Compras no cartão', r.totalCartao],
+      ['Investido (Pé de meia)', r.totalInvestido],
+      ['Orçamento definido', r.orcamentoTotal],
+      ['Gasto considerado no orçamento', r.gastoOrcamento]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumoAoa), 'Resumo');
+
+    function sheetDeGrupo(lista, nomeCol){
+      return [[nomeCol, 'Valor']].concat(lista.map(([c,v]) => [c, v]));
+    }
+    const grupos = [
+      [r.despesasPorCategoria, 'Categoria', 'Despesas por categoria'],
+      [r.receitasPorCategoria, 'Categoria', 'Receitas por categoria'],
+      [r.cartaoPorNome, 'Cartão', 'Cartão'],
+      [r.investimentosPorMeta, 'Meta', 'Pé de meia por meta']
+    ];
+    grupos.forEach(([lista, nomeCol, aba]) => {
+      if(!lista.length) return;
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetDeGrupo(lista, nomeCol)), aba);
+    });
+
+    const lancAoa = [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']].concat(
+      r.itensOrdenados.map(l => [
+        fmtDate(l.data),
+        (TAG_INFO[l.tipo] || { label: l.tipo }).label,
+        l.categoria || '-',
+        l.descricao || '',
+        Number(l.valor)
+      ])
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lancAoa), 'Lançamentos');
+
+    XLSX.writeFile(wb, nomeArquivoRelatorio(periodo.de, periodo.ate, 'xlsx'));
+    erroEl.textContent = 'Excel baixado!';
+    erroEl.style.color = 'var(--green)';
+  }catch(e){
+    erroEl.textContent = e.message || 'Erro ao gerar o Excel.';
+    erroEl.style.color = 'var(--red)';
+  }
+}
+
 // ---------- Notificações (faturas/dívidas/provisões vencendo, orçamento estourado) ----------
 const NOTIF_DIAS_ANTECEDENCIA = 5;
 
@@ -3626,6 +3919,10 @@ function renderSummary(){
   // em três colunas logo abaixo (cada uma abre o Razão correspondente).
   const heroHtml = `
     <div class="card clickable saldo-hero" data-key="conta" onclick="abrirRazao('conta')">
+      <div class="saldo-hero-cal-wrap" onclick="event.stopPropagation()">
+        <input type="month" value="${monthKey}" onchange="mudarFiltroMes(this.value)" class="cal-icon-input" title="Ver movimentação de outro mês">
+        <span class="cal-icon-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
+      </div>
       <div class="label">Saldo em Conta Corrente</div>
       <div class="value ${saldoConta>=0?'info':'neg'}">${fmt(saldoConta)}</div>
       <div class="saldo-hero-stats">
