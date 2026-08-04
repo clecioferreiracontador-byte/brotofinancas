@@ -1878,6 +1878,18 @@ function carregarJsPDF(){
   return jsPdfCarregando;
 }
 
+// Logo (ícone do app) usada no canto do PDF do relatório. Carregada uma única vez e reaproveitada.
+let logoRelatorioCache = null;
+function carregarLogoRelatorio(){
+  if(logoRelatorioCache) return Promise.resolve(logoRelatorioCache);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { logoRelatorioCache = img; resolve(img); };
+    img.onerror = () => reject(new Error('logo indisponível'));
+    img.src = 'icons/icon-192.png';
+  });
+}
+
 // Carrega o SheetJS (xlsx) sob demanda, só quando a pessoa baixa o Relatório do mês em Excel.
 let xlsxCarregando = null;
 function carregarXLSX(){
@@ -3034,6 +3046,23 @@ function nomeArquivoRelatorio(de, ate, extensao){
   return 'relatorio-' + de + (ate !== de ? '_a_' + ate : '') + '.' + extensao;
 }
 
+// Estilos de tabela do PDF do relatório, espelhando a paleta clara/escura do app (var(--...)
+// em style.css não existe pro jsPDF, então os valores ficam fixos aqui mesmo). "extra" permite
+// completar/sobrescrever campos por chamada (ex: fontSize menor na tabela de lançamentos).
+function estilosTabelaRelatorio(escuro, extra){
+  const base = escuro
+    ? {
+        styles: { textColor: [226,232,240], lineColor: [51,65,85], lineWidth: 0.1, fillColor: [30,41,59] },
+        headStyles: { fillColor: [59,130,246], textColor: [255,255,255] },
+        alternateRowStyles: { fillColor: [22,32,50] }
+      }
+    : { headStyles: { fillColor: [34,150,105], textColor: [255,255,255] } };
+  const out = Object.assign({}, base, extra);
+  if(extra && extra.styles) out.styles = Object.assign({}, base.styles, extra.styles);
+  if(extra && extra.headStyles) out.headStyles = Object.assign({}, base.headStyles, extra.headStyles);
+  return out;
+}
+
 async function gerarRelatorioPDF(){
   const periodo = periodoRelatorioValido();
   if(!periodo) return;
@@ -3042,18 +3071,41 @@ async function gerarRelatorioPDF(){
   erroEl.style.color = '';
   try{
     const JsPDF = await carregarJsPDF();
+    const logo = await carregarLogoRelatorio().catch(() => null);
     const r = coletarDadosRelatorio(periodo.de, periodo.ate);
     const tituloPeriodo = labelPeriodoRelatorio(periodo.de, periodo.ate);
     const doc = new JsPDF();
 
+    // Segue o tema (claro/escuro) que a pessoa está usando no app no momento de gerar o PDF.
+    const escuro = !temaClaroAtivo();
+    const corTexto = escuro ? [226,232,240] : [17,24,39];
+    const corMuted = escuro ? [148,163,184] : [120,120,120];
+
+    if(escuro){
+      const corFundo = [15,23,42];
+      const pintarFundo = () => {
+        doc.setFillColor(corFundo[0], corFundo[1], corFundo[2]);
+        doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), 'F');
+      };
+      doc.internal.events.subscribe('addPage', pintarFundo);
+      pintarFundo();
+    }
+
+    // Logo do app no canto superior direito da primeira página.
+    if(logo){
+      const tam = 16;
+      doc.addImage(logo, 'PNG', doc.internal.pageSize.getWidth() - tam - 14, 8, tam, tam);
+    }
+
     doc.setFontSize(16);
+    doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
     doc.text('Relatório financeiro — ' + tituloPeriodo, 14, 18);
     doc.setFontSize(10);
-    doc.setTextColor(120);
+    doc.setTextColor(corMuted[0], corMuted[1], corMuted[2]);
     doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), 14, 24);
-    doc.setTextColor(0);
+    doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
 
-    doc.autoTable({
+    doc.autoTable(estilosTabelaRelatorio(escuro, {
       startY: 30,
       head: [['Resumo do período', 'Valor']],
       body: [
@@ -3065,9 +3117,8 @@ async function gerarRelatorioPDF(){
         ['Orçamento definido', fmt(r.orcamentoTotal)],
         ['Gasto considerado no orçamento', fmt(r.gastoOrcamento)]
       ],
-      theme: 'striped',
-      headStyles: { fillColor: [34,150,105] }
-    });
+      theme: 'striped'
+    }));
     let y = doc.lastAutoTable.finalY + 10;
 
     const secoes = [
@@ -3079,15 +3130,16 @@ async function gerarRelatorioPDF(){
     secoes.forEach(([titulo, lista]) => {
       if(!lista.length) return;
       if(y > 260){ doc.addPage(); y = 18; }
-      doc.autoTable({ startY: y, head: [[titulo, 'Valor']], body: lista.map(([c,v]) => [c, fmt(v)]), theme: 'grid' });
+      doc.autoTable(estilosTabelaRelatorio(escuro, { startY: y, head: [[titulo, 'Valor']], body: lista.map(([c,v]) => [c, fmt(v)]), theme: 'grid' }));
       y = doc.lastAutoTable.finalY + 10;
     });
 
     if(r.itensOrdenados.length){
       doc.addPage();
       doc.setFontSize(13);
+      doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
       doc.text('Lançamentos do período', 14, 18);
-      doc.autoTable({
+      doc.autoTable(estilosTabelaRelatorio(escuro, {
         startY: 24,
         head: [['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor']],
         body: r.itensOrdenados.map(l => [
@@ -3099,7 +3151,7 @@ async function gerarRelatorioPDF(){
         ]),
         theme: 'striped',
         styles: { fontSize: 8 }
-      });
+      }));
     }
 
     doc.save(nomeArquivoRelatorio(periodo.de, periodo.ate, 'pdf'));
