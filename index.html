@@ -1954,6 +1954,7 @@ async function extrairLinhasPDF(arrayBuffer, senha){
 // É "melhor esforço": o layout varia muito entre bancos, então a pessoa confere tudo antes de importar.
 function parsePDFExtrato(linhas){
   const MESES_ABREV = {JAN:'01',FEV:'02',MAR:'03',ABR:'04',MAI:'05',JUN:'06',JUL:'07',AGO:'08',SET:'09',OUT:'10',NOV:'11',DEZ:'12'};
+  const reDataSozinha = /^(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)$/i;
   const reDataMes = /\b(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\b/i;
   const reData = /\b(\d{2})\/(\d{2})(?:\/(\d{2,4}))?\b/;
   const reValor = /([+-]|−)?\s?R?\$?\s?(\d{1,3}(?:\.\d{3})*,\d{2})\s?([DC])?/g;
@@ -1962,17 +1963,26 @@ function parsePDFExtrato(linhas){
   // (ex.: cabeçalho "FATURA 10 AGO 2026" de cada página) como referência para essas datas.
   const anoDoc = (linhas.join(' ').match(/\b(20\d{2})\b/) || [])[1] || String(anoCorrente);
   const itens = [];
+  // O Nubank imprime a data de cada compra numa linha própria, separada da descrição/valor —
+  // guarda essa data (só é usada se a linha seguinte não tiver nenhuma data por si só).
+  let dataPendente = null;
   linhas.forEach(linha => {
     // Linhas de resumo (ex.: "Total de compras de todos os cartões, 02 JUL a 02 AGO R$ 652,15",
     // nas faturas do Nubank) têm data e valor mas não são um lançamento — são a soma de tudo.
     if(/^saldo\b|^saldo\s|dispon[ií]vel\s+em\s+conta|^total\b/i.test(linha)) return;
+
+    const soData = linha.match(reDataSozinha);
+    if(soData){
+      dataPendente = { dia: soData[1].padStart(2,'0'), mes: MESES_ABREV[soData[2].toUpperCase()] };
+      return;
+    }
+
     let dia, mes, ano, dataMatch;
     const mdMes = linha.match(reDataMes);
     if(mdMes){
-      dia = mdMes[1].padStart(2,'0');
-      mes = MESES_ABREV[mdMes[2].toUpperCase()];
-      ano = anoDoc;
-      dataMatch = mdMes[0];
+      dia = mdMes[1].padStart(2,'0'); mes = MESES_ABREV[mdMes[2].toUpperCase()]; ano = anoDoc; dataMatch = mdMes[0];
+    } else if(dataPendente){
+      dia = dataPendente.dia; mes = dataPendente.mes; ano = anoDoc; dataMatch = null;
     } else {
       const md = linha.match(reData);
       if(!md) return;
@@ -1980,6 +1990,7 @@ function parsePDFExtrato(linhas){
       if(ano.length === 2) ano = '20' + ano;
       dataMatch = md[0];
     }
+    dataPendente = null; // essa data pendente só vale pra linha imediatamente seguinte
     if(Number(mes) < 1 || Number(mes) > 12 || Number(dia) < 1 || Number(dia) > 31) return;
     const valores = [...linha.matchAll(reValor)];
     if(!valores.length) return;
@@ -1991,10 +2002,10 @@ function parsePDFExtrato(linhas){
     let negativo = true; // padrão: despesa (maioria das linhas); a pessoa ajusta se precisar
     if(sinal === '+' || suf === 'C') negativo = false;
     else if(sinal === '-' || sinal === '−' || suf === 'D') negativo = true;
-    // Descrição = a linha sem a data e sem QUALQUER valor monetário (tira também o saldo
-    // acumulado que alguns bancos imprimem depois do valor do lançamento).
-    let desc = linha.replace(dataMatch, ' ')
-      .replace(/([+-]|−)?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}\s?([DC])?/g, ' ')
+    // Descrição = a linha sem a data (quando estava na mesma linha) e sem QUALQUER valor
+    // monetário (tira também o saldo acumulado que alguns bancos imprimem depois do valor).
+    let desc = dataMatch ? linha.replace(dataMatch, ' ') : linha;
+    desc = desc.replace(/([+-]|−)?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}\s?([DC])?/g, ' ')
       .replace(/\s+/g,' ').trim();
     // "Pagamento em ..." é a baixa da própria fatura (o que a pessoa já pagou), não uma compra —
     // importar isso como lançamento contaria o valor da fatura em dobro.
