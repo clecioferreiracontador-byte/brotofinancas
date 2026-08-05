@@ -2848,9 +2848,8 @@ function calcularSaldoContaCorrente(){
 // Cartões: agrupa lançamentos tipo cartao por nome (compras) e cruza com despesas
 // lançadas na categoria "Cartão de Crédito" com o mesmo nome (pagamentos de fatura).
 // O "total" retornado é o saldo em aberto = total comprado - total pago naquele cartão.
-// mesFiltro (opcional, "AAAA-MM"): quando informado, só conta compras com vencimento até esse
-// mês (parcelas futuras ficam de fora) e pagamentos feitos até esse mês — dá pra ver a fatura
-// em aberto "como estava" num mês de referência, em vez de sempre o total corrente.
+// mesFiltro (opcional, "AAAA-MM"): quando informado, só conta compras e pagamentos daquele
+// mês específico — mostra a fatura que vence nesse mês, sem somar saldo de meses anteriores.
 // Vencimento da fatura é por (cartão, mês) e o usuário define/edita direto na fatura
 // (pílula "Vence" no painel de cartões) — não é mais um campo por compra.
 function vencimentoCartaoParaMes(nome, monthKey){
@@ -2874,8 +2873,10 @@ function cartoesAgrupados(mesFiltro){
   let compras = data.lancamentos.filter(l => l.tipo === 'cartao');
   let pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
   if(mesFiltro){
-    compras = compras.filter(l => (l.vencimento || l.data).slice(0,7) <= mesFiltro);
-    pagamentos = pagamentos.filter(l => l.data.slice(0,7) <= mesFiltro);
+    // Fatura do mês escolhido: só as compras e pagamentos daquele mês específico, sem
+    // acumular saldo de meses anteriores (cada mês é a sua própria fatura).
+    compras = compras.filter(l => (l.vencimento || l.data).slice(0,7) === mesFiltro);
+    pagamentos = pagamentos.filter(l => l.data.slice(0,7) === mesFiltro);
   }
   const nomes = [...new Set(compras.map(l => l.nome || 'Cartão').concat(pagamentos.map(l => l.nome)))];
   return nomes.map(nome => {
@@ -4232,14 +4233,17 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
     if(razaoFiltroNome){
       itens = itens.filter(l => l.nome === razaoFiltroNome);
-      // Fatura do mês selecionado: mesmo que o cartão tenha lançamentos em vários meses,
-      // mostra só os do mês de referência (ex.: agosto → só lançamentos de agosto).
+      // Ver compras traz tudo que compõe o saldo em aberto até o mês de vencimento
+      // escolhido (compras e pagamentos de meses anteriores que ainda não foram baixados
+      // entram também), não só os lançamentos do mês exato.
       const mesRef = mesFiltroCartoesAtivo() || monthKey;
-      if(mesRef) itens = itens.filter(l => l.data && l.data.slice(0,7) === mesRef);
+      if(mesRef) itens = itens.filter(l => l.data && l.data.slice(0,7) <= mesRef);
       const mesLabelRef = mesRef ? mesRef.split('-').reverse().join('/') : '';
-      titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (' + mesLabelRef + ')' : '');
-      total = itens.filter(l => l.tipo === 'cartao').reduce((s,l)=>s+Number(l.valor),0);
-      totalLabel = 'Total da fatura do mês';
+      titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (até ' + mesLabelRef + ')' : '');
+      const totalComprasCum = itens.filter(l => l.tipo === 'cartao').reduce((s,l)=>s+Number(l.valor),0);
+      const totalPagoCum = itens.filter(l => l.tipo === 'despesa').reduce((s,l)=>s+Number(l.valor),0);
+      total = totalComprasCum - totalPagoCum;
+      totalLabel = 'Saldo em aberto até o mês';
     } else {
       titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
       total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
@@ -4648,8 +4652,8 @@ function renderCartoesPanel(){
   const filtroInput = document.getElementById('filtroMesCartoes');
   const localValor = filtroInput.value;
   filtroInput.title = localValor
-    ? 'Filtrando faturas até ' + localValor.split('-').reverse().join('/') + ' — toque para mudar'
-    : 'Ver faturas até um mês de referência';
+    ? 'Mostrando a fatura de ' + localValor.split('-').reverse().join('/') + ' — toque para mudar'
+    : 'Ver a fatura de um mês de referência';
   filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!localValor);
   const mesFiltro = mesFiltroCartoesAtivo();
   const mesRefVenc = mesFiltro || currentMonthKey();
