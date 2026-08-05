@@ -4214,12 +4214,16 @@ function linhaLancamentoHtml(item){
       </div>
     </div>`;
   const categoriaTexto = item.categoria || '';
+  // Descrição (ex.: nome do estabelecimento) precisa ficar visível, não só na dica ao passar
+  // o mouse — é o que permite achar um lançamento específico numa lista de vários do mesmo valor.
+  const descricaoTexto = item.descricao || '';
   return `
     <tr title="${tooltip.replace(/"/g,'&quot;')}">
       <td>${fmtDate(item.data)}</td>
       <td>
         <span class="tag ${tag.cls}">${tag.label}</span>
         ${categoriaTexto ? `<div class="hint" style="margin-top:2px;">${categoriaTexto}</div>` : ''}
+        ${descricaoTexto ? `<div class="hint" style="margin-top:2px;">${descricaoTexto}</div>` : ''}
       </td>
       <td class="${corValor}">${fmt(item.valor)}</td>
       <td class="actions-cell">${acoes}</td>
