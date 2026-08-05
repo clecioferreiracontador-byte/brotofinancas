@@ -2038,17 +2038,60 @@ function detectarVencimentoFaturaPDF(linhas){
   return null;
 }
 
-// Monta a lista de conferência a partir dos itens crus, já com uma categoria padrão ("Outros",
-// que existe tanto em receitas quanto em despesas) — a pessoa reclassifica na própria tabela.
+// Reduz a descrição de um lançamento a uma "chave" estável pra reconhecer o mesmo tipo de
+// gasto em importações futuras, tirando o que varia de mês pra mês (número do cartão, número
+// da parcela, códigos/IDs de transação) e deixando só o que identifica o estabelecimento
+// (ex.: "•••• 7191 Jim.Com* 57460902 Cle - Parcela 1/10" e "•••• 7191 Jim.Com* 88213345 Cle -
+// Parcela 2/10" caem na mesma chave "jim.com* cle").
+function chaveClassificacaoExtrato(descricao){
+  return normalizarTextoExtrato(descricao)
+    .replace(/[•*]{2,}\s*\d+/g, ' ')
+    .replace(/parcela\s*\d+\s*(?:\/|de)\s*\d+/g, ' ')
+    .replace(/\b\d{5,}\b/g, ' ')
+    .replace(/\s+/g,' ').trim()
+    .replace(/^[-\s]+|[-\s]+$/g, '');
+}
+
+// Lembra como a pessoa classificou (tipo/categoria) cada tipo de gasto na última importação,
+// pra já vir pré-marcado certo nas próximas vezes — ela ainda pode ajustar antes de importar.
+function lembrarClassificacaoExtrato(descricao, tipo, categoria){
+  const chave = chaveClassificacaoExtrato(descricao);
+  if(!chave) return;
+  if(!data.extratoClassificacoes) data.extratoClassificacoes = {};
+  data.extratoClassificacoes[chave] = { tipo, categoria };
+}
+function classificacaoLembradaExtrato(descricao){
+  const chave = chaveClassificacaoExtrato(descricao);
+  if(!chave) return null;
+  return (data.extratoClassificacoes || {})[chave] || null;
+}
+
+// Monta a lista de conferência a partir dos itens crus. Quando a descrição bate com algo já
+// classificado numa importação anterior, vem pré-marcada com o tipo/categoria de então; senão,
+// cai em "Outros" (que existe tanto em receitas quanto em despesas) — a pessoa reclassifica
+// direto na tabela antes de confirmar.
 function montarExtratoParsed(itens, tipoExtrato){
-  return itens.map(item => ({
-    data: item.data,
-    descricao: item.descricao,
-    valor: Math.abs(item.valor),
-    tipo: tipoExtrato === 'cartao' ? 'cartao' : (item.valor >= 0 ? 'receita' : 'despesa'),
-    categoria: 'Outros',
-    incluir: true
-  })).sort((a,b) => a.data.localeCompare(b.data));
+  return itens.map(item => {
+    const lembrada = classificacaoLembradaExtrato(item.descricao);
+    // O tipo lembrado só é reaproveitado num extrato de conta se também vier de um extrato de
+    // conta (receita/despesa) — um "cartao" lembrado de uma fatura antiga não se aplica aqui.
+    const tipoLembrado = lembrada && (lembrada.tipo === 'receita' || lembrada.tipo === 'despesa') ? lembrada.tipo : null;
+    const tipo = tipoExtrato === 'cartao'
+      ? 'cartao'
+      : (tipoLembrado || (item.valor >= 0 ? 'receita' : 'despesa'));
+    // A categoria lembrada só vale se ainda existir na lista desse tipo (a pessoa pode ter
+    // excluído a categoria desde a última importação).
+    const categoriaLembrada = lembrada && opcoesCategoriaExtrato({ tipo }).includes(lembrada.categoria)
+      ? lembrada.categoria : null;
+    return {
+      data: item.data,
+      descricao: item.descricao,
+      valor: Math.abs(item.valor),
+      tipo,
+      categoria: categoriaLembrada || 'Outros',
+      incluir: true
+    };
+  }).sort((a,b) => a.data.localeCompare(b.data));
 }
 
 function processarArquivoExtrato(e){
@@ -2249,6 +2292,8 @@ function importarExtratoSelecionados(){
       meta: null,
       forma: item.tipo === 'cartao' ? null : 'Banco'
     });
+    // Guarda como esse gasto foi classificado, pra vir pré-marcado assim na próxima importação.
+    lembrarClassificacaoExtrato(item.descricao, item.tipo, item.categoria || 'Outros');
   });
   if(tipoExtrato === 'cartao' && vencimentoFatura){
     setVencimentoCartaoMes(nomeCartao, vencimentoFatura.slice(0,7), vencimentoFatura);
