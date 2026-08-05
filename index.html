@@ -4353,8 +4353,10 @@ function getRazaoConfig(key){
       itens = itens.filter(l => l.nome === razaoFiltroNome);
       // Ver compras traz tudo que compõe o saldo em aberto até o mês de vencimento
       // escolhido (compras e pagamentos de meses anteriores que ainda não foram baixados
-      // entram também), não só os lançamentos do mês exato.
-      const mesRef = mesFiltroCartoesAtivo() || monthKey;
+      // entram também), não só os lançamentos do mês exato. Sem filtro de mês selecionado
+      // (padrão no celular), mostra tudo — igual ao total "sem filtro" do painel de cartões,
+      // pra nunca sobrar saldo em aberto sem nenhum lançamento visível aqui.
+      const mesRef = mesFiltroCartoesAtivo();
       if(mesRef) itens = itens.filter(l => l.data && l.data.slice(0,7) <= mesRef);
       const mesLabelRef = mesRef ? mesRef.split('-').reverse().join('/') : '';
       titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (até ' + mesLabelRef + ')' : '');
