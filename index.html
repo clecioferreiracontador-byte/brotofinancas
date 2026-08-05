@@ -1948,18 +1948,39 @@ async function extrairLinhasPDF(arrayBuffer, senha){
   return linhas;
 }
 
-// Interpreta cada linha do extrato/fatura em PDF procurando uma data (dd/mm[/aaaa]) e um valor
-// monetário no formato brasileiro (1.234,56), com sinal/indicador D/C quando houver. É "melhor
-// esforço": o layout varia muito entre bancos, então a pessoa confere tudo antes de importar.
+// Interpreta cada linha do extrato/fatura em PDF procurando uma data — dd/mm[/aaaa] ou "dd MÊS"
+// (o Nubank, por exemplo, imprime as compras da fatura como "02 JUL", sem barras e sem ano) — e
+// um valor monetário no formato brasileiro (1.234,56), com sinal/indicador D/C quando houver.
+// É "melhor esforço": o layout varia muito entre bancos, então a pessoa confere tudo antes de importar.
 function parsePDFExtrato(linhas){
+  const MESES_ABREV = {JAN:'01',FEV:'02',MAR:'03',ABR:'04',MAI:'05',JUN:'06',JUL:'07',AGO:'08',SET:'09',OUT:'10',NOV:'11',DEZ:'12'};
+  const reDataMes = /\b(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\b/i;
   const reData = /\b(\d{2})\/(\d{2})(?:\/(\d{2,4}))?\b/;
-  const reValor = /([+-])?\s?R?\$?\s?(\d{1,3}(?:\.\d{3})*,\d{2})\s?([DC])?/g;
+  const reValor = /([+-]|−)?\s?R?\$?\s?(\d{1,3}(?:\.\d{3})*,\d{2})\s?([DC])?/g;
   const anoCorrente = new Date().getFullYear();
+  // Nas linhas "dd MÊS" não vem ano nenhum — usa o ano que aparecer em algum lugar do documento
+  // (ex.: cabeçalho "FATURA 10 AGO 2026" de cada página) como referência para essas datas.
+  const anoDoc = (linhas.join(' ').match(/\b(20\d{2})\b/) || [])[1] || String(anoCorrente);
   const itens = [];
   linhas.forEach(linha => {
-    if(/^saldo\b|^saldo\s|dispon[ií]vel\s+em\s+conta/i.test(linha)) return;
-    const md = linha.match(reData);
-    if(!md) return;
+    // Linhas de resumo (ex.: "Total de compras de todos os cartões, 02 JUL a 02 AGO R$ 652,15",
+    // nas faturas do Nubank) têm data e valor mas não são um lançamento — são a soma de tudo.
+    if(/^saldo\b|^saldo\s|dispon[ií]vel\s+em\s+conta|^total\b/i.test(linha)) return;
+    let dia, mes, ano, dataMatch;
+    const mdMes = linha.match(reDataMes);
+    if(mdMes){
+      dia = mdMes[1].padStart(2,'0');
+      mes = MESES_ABREV[mdMes[2].toUpperCase()];
+      ano = anoDoc;
+      dataMatch = mdMes[0];
+    } else {
+      const md = linha.match(reData);
+      if(!md) return;
+      dia = md[1]; mes = md[2]; ano = md[3] || String(anoCorrente);
+      if(ano.length === 2) ano = '20' + ano;
+      dataMatch = md[0];
+    }
+    if(Number(mes) < 1 || Number(mes) > 12 || Number(dia) < 1 || Number(dia) > 31) return;
     const valores = [...linha.matchAll(reValor)];
     if(!valores.length) return;
     // Primeiro valor da linha = o lançamento (quando há um segundo, costuma ser saldo acumulado).
@@ -1969,15 +1990,15 @@ function parsePDFExtrato(linhas){
     const sinal = vm[1]; const suf = (vm[3] || '').toUpperCase();
     let negativo = true; // padrão: despesa (maioria das linhas); a pessoa ajusta se precisar
     if(sinal === '+' || suf === 'C') negativo = false;
-    else if(sinal === '-' || suf === 'D') negativo = true;
-    let dia = md[1], mes = md[2], ano = md[3] || String(anoCorrente);
-    if(ano.length === 2) ano = '20' + ano;
-    if(Number(mes) < 1 || Number(mes) > 12 || Number(dia) < 1 || Number(dia) > 31) return;
+    else if(sinal === '-' || sinal === '−' || suf === 'D') negativo = true;
     // Descrição = a linha sem a data e sem QUALQUER valor monetário (tira também o saldo
     // acumulado que alguns bancos imprimem depois do valor do lançamento).
-    let desc = linha.replace(md[0], ' ')
-      .replace(/([+-])?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}\s?([DC])?/g, ' ')
+    let desc = linha.replace(dataMatch, ' ')
+      .replace(/([+-]|−)?\s?R?\$?\s?\d{1,3}(?:\.\d{3})*,\d{2}\s?([DC])?/g, ' ')
       .replace(/\s+/g,' ').trim();
+    // "Pagamento em ..." é a baixa da própria fatura (o que a pessoa já pagou), não uma compra —
+    // importar isso como lançamento contaria o valor da fatura em dobro.
+    if(/^pagamento\s+em\b/i.test(desc)) return;
     itens.push({ data: `${ano}-${mes}-${dia}`, valor: negativo ? -valorAbs : valorAbs, descricao: desc.slice(0, 80) });
   });
   return itens;
