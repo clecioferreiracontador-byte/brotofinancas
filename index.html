@@ -4477,12 +4477,34 @@ function abrirRazao(key, filtroNome){
   razaoAtualKey = key;
   razaoFiltroNome = filtroNome || null;
   document.getElementById('razaoModal').style.display = 'flex';
+  bloquearScrollFundo();
   renderRazaoContent();
 }
 function fecharRazao(){
   document.getElementById('razaoModal').style.display = 'none';
+  liberarScrollFundo();
   razaoAtualKey = null;
   razaoFiltroNome = null;
+}
+
+// Sem isso, no celular, arrastar o dedo sobre o modal "Ver compras" também rola a tela de
+// fundo (o overlay não tem scroll próprio fora do card), dando a sensação de tela "bagunçada"
+// se movendo por baixo. Trava a página no lugar enquanto o modal está aberto.
+let scrollYAntesModal = null;
+function bloquearScrollFundo(){
+  if(scrollYAntesModal !== null) return;
+  scrollYAntesModal = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = -scrollYAntesModal + 'px';
+  document.body.style.width = '100%';
+}
+function liberarScrollFundo(){
+  if(scrollYAntesModal === null) return;
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  window.scrollTo(0, scrollYAntesModal);
+  scrollYAntesModal = null;
 }
 function renderRazaoContent(){
   if(!razaoAtualKey) return;
