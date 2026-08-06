@@ -1035,7 +1035,7 @@
     <span style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
       Faturas em aberto
       <span class="cal-icon-wrap">
-        <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" class="cal-icon-input" title="Ver faturas até um mês de referência">
+        <input type="month" id="filtroMesCartoes" onchange="renderCartoesPanel()" class="cal-icon-input" title="Ver a fatura que vence num mês de referência">
         <span class="cal-icon-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/></svg></span>
       </span>
     </span>
@@ -2520,6 +2520,13 @@ function addOneMonthToKey(monthKey){
   return `${y}-${String(m).padStart(2,'0')}`;
 }
 
+function subOneMonthFromKey(monthKey){
+  const partes = monthKey.split('-').map(Number);
+  let y = partes[0], m = partes[1] - 1;
+  if(m < 1){ m = 12; y -= 1; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+
 // Gera lista de meses (YYYY-MM) de "de" até "ate", inclusive. Se ate < de, retorna só [de].
 function gerarMesesEntre(de, ate){
   const meses = [de];
@@ -2967,10 +2974,12 @@ function calcularSaldoContaCorrente(){
 // Cartões: agrupa lançamentos tipo cartao por nome (compras) e cruza com despesas
 // lançadas na categoria "Cartão de Crédito" com o mesmo nome (pagamentos de fatura).
 // O "total" retornado é o saldo em aberto = total comprado - total pago naquele cartão.
-// mesFiltro (opcional, "AAAA-MM"): quando informado, só conta compras e pagamentos daquele
-// mês específico — mostra a fatura que vence nesse mês, sem somar saldo de meses anteriores.
-// Vencimento da fatura é por (cartão, mês) e o usuário define/edita direto na fatura
-// (pílula "Vence" no painel de cartões) — não é mais um campo por compra.
+// mesFiltro (opcional, "AAAA-MM") é o mês de VENCIMENTO da fatura (não o mês da compra):
+// quando informado, só conta as compras cuja fatura vence naquele mês e os pagamentos
+// feitos contra essa mesma fatura — mostra a fatura que vence nesse mês, sem somar saldo
+// de meses anteriores.
+// Vencimento da fatura é por (cartão, mês da compra) e o usuário define/edita direto na
+// fatura (pílula "Vence" no painel de cartões) — não é mais um campo por compra.
 function vencimentoCartaoParaMes(nome, monthKey){
   if(!monthKey) return null;
   const porCartao = (data.cartaoVencimentos || {})[nome];
@@ -2988,15 +2997,27 @@ function setVencimentoCartaoMes(nome, monthKey, dateStr){
   else delete data.cartaoVencimentos[nome][monthKey];
 }
 
+// Em qual mês (AAAA-MM) a fatura de uma compra vence: usa o vencimento que o usuário
+// definiu para o mês da compra (pílula "Vence"); se ainda não definiu, assume o mês
+// seguinte ao da compra — como fecha a fatura na maioria dos cartões (compra em julho,
+// fatura vence em agosto) — pra a compra não ficar "sem fatura" até o usuário editar.
+function mesFaturaDaCompra(l){
+  const nome = l.nome || 'Cartão';
+  const mesCompra = l.data.slice(0,7);
+  const venc = vencimentoCartaoParaMes(nome, mesCompra);
+  return venc ? venc.slice(0,7) : addOneMonthToKey(mesCompra);
+}
+
 function cartoesAgrupados(mesFiltro){
   let compras = data.lancamentos.filter(l => l.tipo === 'cartao');
   let pagamentos = data.lancamentos.filter(l => l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito' && l.nome);
   if(mesFiltro){
-    // Fatura do mês escolhido: só as compras e pagamentos daquele mês específico, sem
-    // acumular saldo de meses anteriores (cada mês é a sua própria fatura).
+    // Fatura do mês de vencimento escolhido: agrupa pelo mês em que a fatura da compra
+    // efetivamente vence (não pelo mês em que a compra foi feita), sem somar saldo de
+    // outras faturas — cada mês de vencimento é a sua própria fatura.
     // Pagamento usa o vencimento da fatura que ele está quitando (não a data em que foi pago) —
     // senão pagar hoje a fatura de um mês passado/futuro não abatia o saldo daquele mês certo.
-    compras = compras.filter(l => (l.vencimento || l.data).slice(0,7) === mesFiltro);
+    compras = compras.filter(l => mesFaturaDaCompra(l) === mesFiltro);
     pagamentos = pagamentos.filter(l => (l.vencimento || l.data).slice(0,7) === mesFiltro);
   }
   const nomes = [...new Set(compras.map(l => l.nome || 'Cartão').concat(pagamentos.map(l => l.nome)))];
@@ -3008,16 +3029,23 @@ function cartoesAgrupados(mesFiltro){
     const saldoAberto = totalComprado - totalPago;
     const maisRecenteCompra = comprasDoNome.length ? comprasDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     const maisRecentePagamento = pagamentosDoNome.length ? pagamentosDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
-    // O vencimento mostrado é o da fatura do mês de referência (definido pelo usuário na
-    // própria fatura). Sem filtro de mês, usa o mês atual como referência.
-    const mesRefVenc = mesFiltro || currentMonthKey();
+    // Mês da compra cujo vencimento é mostrado/editado na pílula "Vence": prefere um mês de
+    // compra que já tenha vencimento definido explicitamente (pra edição bater com o que já
+    // foi configurado); senão usa o da compra mais recente; sem compras ainda (fatura futura
+    // vazia), assume o mês anterior ao mês de vencimento em referência (ou o atual, sem filtro).
+    const vencimentosDoNome = (data.cartaoVencimentos || {})[nome] || {};
+    const bucketComVenc = comprasDoNome.map(l => l.data.slice(0,7)).find(mk => vencimentosDoNome[mk]);
+    const mesCompraRef = bucketComVenc || (maisRecenteCompra
+      ? maisRecenteCompra.data.slice(0,7)
+      : (mesFiltro ? subOneMonthFromKey(mesFiltro) : currentMonthKey()));
     return {
       nome,
       total: saldoAberto,
       totalComprado,
       totalPago,
       limite: maisRecenteCompra ? maisRecenteCompra.limite : null,
-      vencimento: vencimentoCartaoParaMes(nome, mesRefVenc),
+      vencimento: vencimentoCartaoParaMes(nome, mesCompraRef),
+      mesCompraRef,
       dataUltimoLancamento: maisRecenteCompra ? maisRecenteCompra.data : (maisRecentePagamento ? maisRecentePagamento.data : null),
       latestId: maisRecenteCompra ? maisRecenteCompra.id : null,
       qtdLancamentos: comprasDoNome.length
@@ -4396,12 +4424,13 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
     if(razaoFiltroNome){
       itens = itens.filter(l => l.nome === razaoFiltroNome);
-      // Ver compras mostra só os lançamentos da fatura do mês escolhido no filtro de cartões —
-      // o mesmo critério usado em cartoesAgrupados (vencimento da compra/pagamento, senão a
-      // data), pra bater exatamente com o saldo em aberto mostrado no painel daquele mês.
+      // Ver compras mostra só os lançamentos da fatura que VENCE no mês escolhido no filtro de
+      // cartões — o mesmo critério usado em cartoesAgrupados (mês de vencimento da compra, não
+      // o mês da compra em si; pagamento usa o vencimento da fatura que está quitando), pra
+      // bater exatamente com o saldo em aberto mostrado no painel daquele mês.
       // Sem mês escolhido (padrão no celular), mostra tudo (todas as faturas daquele cartão).
       const mesRef = mesFiltroCartoesAtivo();
-      if(mesRef) itens = itens.filter(l => (l.vencimento || l.data).slice(0,7) === mesRef);
+      if(mesRef) itens = itens.filter(l => l.tipo === 'cartao' ? mesFaturaDaCompra(l) === mesRef : (l.vencimento || l.data).slice(0,7) === mesRef);
       const mesLabelRef = mesRef ? mesRef.split('-').reverse().join('/') : '';
       titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (' + mesLabelRef + ')' : '');
       const totalComprasCum = itens.filter(l => l.tipo === 'cartao').reduce((s,l)=>s+Number(l.valor),0);
@@ -4820,7 +4849,6 @@ function renderCartoesPanel(){
     : 'Ver a fatura de um mês de referência';
   filtroInput.closest('.cal-icon-wrap').classList.toggle('active', !!localValor);
   const mesFiltro = mesFiltroCartoesAtivo();
-  const mesRefVenc = mesFiltro || currentMonthKey();
   const list = document.getElementById('cartoesList');
   const cartoes = cartoesAgrupados(mesFiltro);
   populateCartoesDatalist();
@@ -4848,7 +4876,7 @@ function renderCartoesPanel(){
       const vencAttrNome = (c.nome || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
       const vencPill = `<label class="cf-venc" title="Toque para definir/alterar o vencimento da fatura deste mês">
         <span class="cf-venc-label">Vence</span>
-        <input type="date" value="${c.vencimento || ''}" data-cartao="${vencAttrNome}" data-mes="${mesRefVenc}" onchange="salvarVencPicker(this)" aria-label="Vencimento da fatura">
+        <input type="date" value="${c.vencimento || ''}" data-cartao="${vencAttrNome}" data-mes="${c.mesCompraRef}" onchange="salvarVencPicker(this)" aria-label="Vencimento da fatura">
       </label>`;
       const btnVer = c.latestId ? `<button class="cf-btn-ghost" onclick="abrirRazao('cartao', '${nomeEscapado}')">Ver compras</button>` : '';
       const emAberto = c.total > 0;
