@@ -905,7 +905,12 @@
         <select id="provisaoTipo">
           <option value="receita">Receita</option>
           <option value="despesa">Despesa</option>
+          <option value="cartao">Cartão de Crédito</option>
         </select>
+      </div>
+      <div class="field" id="fieldProvisaoCartaoNome" style="display:none;">
+        <label>Nome do cartão</label>
+        <input type="text" id="provisaoCartaoNome" placeholder="ex: Nubank, Inter..." list="cartoesDatalist">
       </div>
       <div class="field">
         <label>Categoria</label>
@@ -2989,8 +2994,10 @@ function cartoesAgrupados(mesFiltro){
   if(mesFiltro){
     // Fatura do mês escolhido: só as compras e pagamentos daquele mês específico, sem
     // acumular saldo de meses anteriores (cada mês é a sua própria fatura).
+    // Pagamento usa o vencimento da fatura que ele está quitando (não a data em que foi pago) —
+    // senão pagar hoje a fatura de um mês passado/futuro não abatia o saldo daquele mês certo.
     compras = compras.filter(l => (l.vencimento || l.data).slice(0,7) === mesFiltro);
-    pagamentos = pagamentos.filter(l => l.data.slice(0,7) === mesFiltro);
+    pagamentos = pagamentos.filter(l => (l.vencimento || l.data).slice(0,7) === mesFiltro);
   }
   const nomes = [...new Set(compras.map(l => l.nome || 'Cartão').concat(pagamentos.map(l => l.nome)))];
   return nomes.map(nome => {
@@ -3038,6 +3045,7 @@ function mesFiltroCartoesAtivo(){
 // escaping quando o nome do cartão tem acentos, aspas etc.
 function pagarFatura(idx){
   const mesFiltro = mesFiltroCartoesAtivo();
+  const mesRef = mesFiltro || currentMonthKey();
   const cartoes = cartoesAgrupados(mesFiltro);
   const cartao = cartoes[idx];
   if(!cartao) return;
@@ -3058,7 +3066,9 @@ function pagarFatura(idx){
     categoria: 'Cartão de Crédito',
     valor: Number(valorPago.toFixed(2)),
     descricao: 'Pagamento fatura - ' + cartao.nome,
-    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
+    // vencimento guarda o mês da fatura sendo paga (não a data do pagamento), para o pagamento
+    // abater o saldo em aberto dessa fatura mesmo se pago em outro mês (ver cartoesAgrupados).
+    limite: null, vencimento: cartao.vencimento || (mesRef + '-01'), parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
   });
 
   saveData();
@@ -3428,8 +3438,9 @@ function calcularAlertas(){
     if(p.vencimento){
       const dias = diasAteData(p.vencimento);
       if(dias <= NOTIF_DIAS_ANTECEDENCIA){
-        const rotulo = p.tipo === 'receita' ? 'Receita prevista' : 'Despesa prevista';
-        alertas.push({ texto: `${textoVencimento(dias, rotulo, p.vencimento)} — ${p.categoria} (${fmt(p.valor)})`, urgente: dias < 0 });
+        const rotulo = p.tipo === 'receita' ? 'Receita prevista' : (p.tipo === 'cartao' ? 'Compra prevista no cartão' : 'Despesa prevista');
+        const alvo = p.tipo === 'cartao' ? (p.nomeCartao || p.categoria) : p.categoria;
+        alertas.push({ texto: `${textoVencimento(dias, rotulo, p.vencimento)} — ${alvo} (${fmt(p.valor)})`, urgente: dias < 0 });
       }
     }
   });
@@ -3766,6 +3777,7 @@ function abrirProvisoes(){
     document.getElementById('provisaoMesInput').value = nextMonthKeyFromToday();
   }
   populateProvisaoCategoriaSelect();
+  toggleProvisaoCartaoNomeField();
   renderProvisoes();
 }
 function fecharProvisoes(){
@@ -3773,8 +3785,14 @@ function fecharProvisoes(){
 }
 
 function isProvisaoCartaoCredito(){
-  return document.getElementById('provisaoTipo').value === 'despesa' &&
-    document.getElementById('provisaoCategoria').value === 'Cartão de Crédito';
+  const tipo = document.getElementById('provisaoTipo').value;
+  return tipo === 'cartao' ||
+    (tipo === 'despesa' && document.getElementById('provisaoCategoria').value === 'Cartão de Crédito');
+}
+
+function toggleProvisaoCartaoNomeField(){
+  const isCartao = document.getElementById('provisaoTipo').value === 'cartao';
+  document.getElementById('fieldProvisaoCartaoNome').style.display = isCartao ? 'flex' : 'none';
 }
 
 function toggleProvisaoRepeteField(){
@@ -3802,7 +3820,10 @@ function populateProvisaoCategoriaSelect(){
   const tipo = document.getElementById('provisaoTipo').value;
   const sel = document.getElementById('provisaoCategoria');
   const valorAtual = sel.value;
-  const lista = listaCategoriasParaTipo(tipo);
+  // Provisão de cartão lança uma compra no cartão: usa as categorias de despesa (Alimentação,
+  // Lazer...), mas sem "Cartão de Crédito" nela mesma, que é só para pagamento de fatura.
+  let lista = listaCategoriasParaTipo(tipo === 'cartao' ? 'despesa' : tipo);
+  if(tipo === 'cartao') lista = lista.filter(c => c !== 'Cartão de Crédito');
   sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
   if(lista.includes(valorAtual)) sel.value = valorAtual;
 }
@@ -3826,7 +3847,7 @@ function renderProvisoes(){
   const itens = data.provisoes.filter(p => p.mes === mes);
 
   const totalReceita = itens.filter(p=>p.tipo==='receita').reduce((s,p)=>s+Number(p.valor),0);
-  const totalDespesa = itens.filter(p=>p.tipo==='despesa').reduce((s,p)=>s+Number(p.valor),0);
+  const totalDespesa = itens.filter(p=>p.tipo==='despesa' || p.tipo==='cartao').reduce((s,p)=>s+Number(p.valor),0);
   document.getElementById('provisaoTotalReceita').textContent = fmt(totalReceita);
   document.getElementById('provisaoTotalDespesa').textContent = fmt(totalDespesa);
   const resultado = totalReceita - totalDespesa;
@@ -3844,12 +3865,12 @@ function renderProvisoes(){
     return a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1);
   });
   list.innerHTML = ordenados.map(p => {
-    const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : {label:'Despesa', cls:'despesa'};
+    const tag = p.tipo === 'receita' ? {label:'Receita', cls:'receita'} : (p.tipo === 'cartao' ? {label:'Cartão', cls:'despesa'} : {label:'Despesa', cls:'despesa'});
     const cor = p.tipo === 'receita' ? 'pos' : 'neg';
     const btnExcluirSerie = p.recorrenciaId ? `<button class="row-menu-danger" onclick="excluirSerieProvisao('${p.recorrenciaId}')">Excluir série</button>` : '';
     const descricaoLimpa = (p.descricao || '').replace(/\s*\(parcela \d+\/\d+\)/, '').trim();
     const parcelaInfo = parcelaInfoProvisao(p);
-    const detalhe = [p.categoria || null, descricaoLimpa || null, parcelaInfo].filter(Boolean).join(' • ') || '-';
+    const detalhe = [p.categoria || null, p.nomeCartao ? 'Cartão: ' + p.nomeCartao : null, descricaoLimpa || null, parcelaInfo].filter(Boolean).join(' • ') || '-';
     return `
       <div class="list-item">
         <div>
@@ -3889,6 +3910,8 @@ function editarProvisao(id){
   editingProvisaoId = id;
   document.getElementById('provisaoTipo').value = p.tipo;
   populateProvisaoCategoriaSelect();
+  toggleProvisaoCartaoNomeField();
+  document.getElementById('provisaoCartaoNome').value = p.nomeCartao || '';
   document.getElementById('provisaoCategoria').value = p.categoria || '';
   document.getElementById('provisaoValor').value = p.valor;
   document.getElementById('provisaoDescricao').value = p.descricao || '';
@@ -3906,6 +3929,7 @@ function cancelEditProvisao(){
   editingProvisaoId = null;
   document.getElementById('provisaoForm').reset();
   document.getElementById('fieldProvisaoRepete').style.display = '';
+  toggleProvisaoCartaoNomeField();
   toggleProvisaoRepeteField();
   document.getElementById('provisaoSubmitBtn').textContent = 'Adicionar';
   document.getElementById('provisaoCancelBtn').style.display = 'none';
@@ -3924,15 +3948,32 @@ function lancarProvisaoAgora(id){
   if(!p) return;
   const hojeISO = new Date().toISOString().slice(0,10);
   const dataFinal = p.vencimento || (hojeISO.slice(0,7) === p.mes ? hojeISO : (p.mes + '-01'));
-  data.lancamentos.push({
-    id: uid(),
-    data: dataFinal,
-    tipo: p.tipo,
-    categoria: p.categoria,
-    valor: Number(p.valor),
-    descricao: (p.descricao ? p.descricao + ' ' : '') + '(provisão)',
-    limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null, forma: 'Banco'
-  });
+  if(p.tipo === 'cartao'){
+    // Provisão de cartão vira uma compra no cartão (tipo "cartao"), somando na fatura
+    // em aberto do cartão escolhido, e não uma despesa direta na conta.
+    const cartaoExistente = cartoesAgrupados().find(c => c.nome === p.nomeCartao);
+    data.lancamentos.push({
+      id: uid(),
+      data: dataFinal,
+      tipo: 'cartao',
+      categoria: p.categoria,
+      valor: Number(p.valor),
+      descricao: (p.descricao ? p.descricao + ' ' : '') + '(provisão)',
+      limite: cartaoExistente ? cartaoExistente.limite : null,
+      vencimento: null, parcelas: null, tipoInvestimento: null,
+      nome: p.nomeCartao, forma: null
+    });
+  } else {
+    data.lancamentos.push({
+      id: uid(),
+      data: dataFinal,
+      tipo: p.tipo,
+      categoria: p.categoria,
+      valor: Number(p.valor),
+      descricao: (p.descricao ? p.descricao + ' ' : '') + '(provisão)',
+      limite: null, vencimento: null, parcelas: null, tipoInvestimento: null, nome: null, forma: 'Banco'
+    });
+  }
   data.provisoes = data.provisoes.filter(x => x.id !== id);
   saveData();
   renderAll();
@@ -3960,6 +4001,7 @@ function abrirGoogleAgendaProvisao(id){
 
 document.getElementById('provisaoTipo').addEventListener('change', function(){
   populateProvisaoCategoriaSelect();
+  toggleProvisaoCartaoNomeField();
   toggleProvisaoRepeteField();
 });
 document.getElementById('provisaoCategoria').addEventListener('change', toggleProvisaoRepeteField);
@@ -3981,10 +4023,12 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
   const repeteAte = document.getElementById('provisaoRepeteAte').value;
   const cartaoCredito = isProvisaoCartaoCredito();
   const numParcelas = parseInt(document.getElementById('provisaoParcelas').value) || 0;
+  const nomeCartao = tipo === 'cartao' ? document.getElementById('provisaoCartaoNome').value.trim() : null;
+  if(tipo === 'cartao' && !nomeCartao){ alert('Informe o nome do cartão.'); return; }
 
   if(editingProvisaoId){
     const p = (data.provisoes || []).find(x => x.id === editingProvisaoId);
-    if(p) Object.assign(p, { mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput });
+    if(p) Object.assign(p, { mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput, nomeCartao });
     editingProvisaoId = null;
     document.getElementById('fieldProvisaoRepete').style.display = '';
     document.getElementById('provisaoSubmitBtn').textContent = 'Adicionar';
@@ -3995,23 +4039,24 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
     const vencimentos = gerarVencimentosParaMeses(meses, vencimentoInput);
     meses.forEach((mk, idx) => {
       const descParcela = (descricao ? descricao + ' ' : '') + `(parcela ${idx + 1}/${numParcelas})`;
-      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao: descParcela, vencimento: vencimentos[idx], recorrenciaId });
+      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao: descParcela, vencimento: vencimentos[idx], recorrenciaId, nomeCartao });
     });
   } else if(repete && !cartaoCredito && repeteAte && repeteAte > mes){
     const recorrenciaId = uid();
     const meses = gerarMesesEntre(mes, repeteAte);
     const vencimentos = gerarVencimentosParaMeses(meses, vencimentoInput);
     meses.forEach((mk, idx) => {
-      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao, vencimento: vencimentos[idx], recorrenciaId });
+      data.provisoes.push({ id: uid(), mes: mk, tipo, categoria, valor, descricao, vencimento: vencimentos[idx], recorrenciaId, nomeCartao: null });
     });
   } else {
-    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput, recorrenciaId: null });
+    data.provisoes.push({ id: uid(), mes, tipo, categoria, valor, descricao, vencimento: vencimentoInput, recorrenciaId: null, nomeCartao });
   }
 
   saveData();
   document.getElementById('provisaoMesInput').value = mes;
   document.getElementById('provisaoValor').value = '';
   document.getElementById('provisaoDescricao').value = '';
+  document.getElementById('provisaoCartaoNome').value = '';
   document.getElementById('provisaoRepete').checked = false;
   document.getElementById('provisaoRepeteAte').value = '';
   document.getElementById('provisaoParcelas').value = '';
