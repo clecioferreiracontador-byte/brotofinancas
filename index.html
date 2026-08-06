@@ -4396,19 +4396,18 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l => l.tipo==='cartao' || (l.tipo==='despesa' && l.categoria === 'Cartão de Crédito'));
     if(razaoFiltroNome){
       itens = itens.filter(l => l.nome === razaoFiltroNome);
-      // Ver compras traz tudo que compõe o saldo em aberto até o mês de vencimento
-      // escolhido (compras e pagamentos de meses anteriores que ainda não foram baixados
-      // entram também), não só os lançamentos do mês exato. Sem filtro de mês selecionado
-      // (padrão no celular), mostra tudo — igual ao total "sem filtro" do painel de cartões,
-      // pra nunca sobrar saldo em aberto sem nenhum lançamento visível aqui.
+      // Ver compras mostra só os lançamentos da fatura do mês escolhido no filtro de cartões —
+      // o mesmo critério usado em cartoesAgrupados (vencimento da compra/pagamento, senão a
+      // data), pra bater exatamente com o saldo em aberto mostrado no painel daquele mês.
+      // Sem mês escolhido (padrão no celular), mostra tudo (todas as faturas daquele cartão).
       const mesRef = mesFiltroCartoesAtivo();
-      if(mesRef) itens = itens.filter(l => l.data && l.data.slice(0,7) <= mesRef);
+      if(mesRef) itens = itens.filter(l => (l.vencimento || l.data).slice(0,7) === mesRef);
       const mesLabelRef = mesRef ? mesRef.split('-').reverse().join('/') : '';
-      titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (até ' + mesLabelRef + ')' : '');
+      titulo = 'Fatura — ' + razaoFiltroNome + (mesLabelRef ? ' (' + mesLabelRef + ')' : '');
       const totalComprasCum = itens.filter(l => l.tipo === 'cartao').reduce((s,l)=>s+Number(l.valor),0);
       const totalPagoCum = itens.filter(l => l.tipo === 'despesa').reduce((s,l)=>s+Number(l.valor),0);
       total = totalComprasCum - totalPagoCum;
-      totalLabel = 'Saldo em aberto até o mês';
+      totalLabel = mesRef ? 'Saldo em aberto no mês' : 'Saldo em aberto';
     } else {
       titulo = 'Razão — Cartões de Crédito (compras e pagamentos de fatura)';
       total = cartoesAgrupados().reduce((s,c)=>s+Number(c.total),0);
