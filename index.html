@@ -4500,7 +4500,12 @@ function renderRazaoContent(){
   const resumoEl = document.getElementById('razaoResumoCartoes');
   const chartContainer = document.getElementById('razaoChartContainer');
   if(razaoAtualKey === 'cartao'){
-    const cartoes = razaoFiltroNome ? [] : cartoesAgrupados();
+    // Com um cartão específico selecionado ("Ver compras"), mostra o resumo só dele (mesmo
+    // mês de vencimento em referência da lista abaixo), pra deixar claro o que compõe o
+    // saldo em aberto — em vez de deixar o usuário somar os lançamentos na mão.
+    const cartoes = razaoFiltroNome
+      ? cartoesAgrupados(mesFiltroCartoesAtivo()).filter(c => c.nome === razaoFiltroNome)
+      : cartoesAgrupados();
     if(cartoes.length === 0){
       resumoEl.innerHTML = '';
     } else {
