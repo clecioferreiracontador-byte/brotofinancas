@@ -3010,7 +3010,12 @@ function mesFaturaDaCompra(l){
   const nome = l.nome || 'Cartão';
   const mesCompra = l.data.slice(0,7);
   const venc = vencimentoCartaoParaMes(nome, mesCompra);
-  if(venc) return venc.slice(0,7);
+  const mesVenc = venc ? venc.slice(0,7) : null;
+  // Um vencimento manual só é respeitado quando realmente empurra a fatura pra outro mês (ex.:
+  // compra em julho, vence em agosto). Se estiver "preso" no mesmo mês da compra, é sinal de
+  // valor antigo, salvo de antes desse agrupamento por vencimento existir — nesse caso ignora
+  // e cai na regra padrão abaixo, senão compras novas ficariam travadas nesse mês pra sempre.
+  if(mesVenc && mesVenc !== mesCompra) return mesVenc;
   return l.data < INICIO_FATURA_POR_VENCIMENTO ? mesCompra : addOneMonthToKey(mesCompra);
 }
 
@@ -3032,7 +3037,9 @@ function cartoesAgrupados(mesFiltro){
     const pagamentosDoNome = pagamentos.filter(l => l.nome === nome);
     const totalComprado = comprasDoNome.reduce((s,l)=>s+Number(l.valor),0);
     const totalPago = pagamentosDoNome.reduce((s,l)=>s+Number(l.valor),0);
-    const saldoAberto = totalComprado - totalPago;
+    // Arredonda pro centavo antes de comparar: soma de floats pode deixar um resíduo tipo
+    // 0.0000000001, que exibe "R$ 0,00" mas ainda conta como "em aberto" (> 0) sem isso.
+    const saldoAberto = Math.round((totalComprado - totalPago) * 100) / 100;
     const maisRecenteCompra = comprasDoNome.length ? comprasDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     const maisRecentePagamento = pagamentosDoNome.length ? pagamentosDoNome.reduce((a,b)=>(b.data>=a.data?b:a)) : null;
     // Mês da compra cujo vencimento é mostrado/editado na pílula "Vence": prefere um mês de
