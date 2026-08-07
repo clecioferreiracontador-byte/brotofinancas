@@ -3001,11 +3001,17 @@ function setVencimentoCartaoMes(nome, monthKey, dateStr){
 // definiu para o mês da compra (pílula "Vence"); se ainda não definiu, assume o mês
 // seguinte ao da compra — como fecha a fatura na maioria dos cartões (compra em julho,
 // fatura vence em agosto) — pra a compra não ficar "sem fatura" até o usuário editar.
+// Esse padrão de "mês seguinte" só vale pra compras de 07/08/2026 em diante (quando esse
+// agrupamento por vencimento foi criado). Compras mais antigas sem vencimento explícito
+// continuam no próprio mês da compra — senão um pagamento antigo, já feito no mesmo mês da
+// compra (como o app funcionava antes), ficaria órfão e a fatura pareceria em aberto de novo.
+const INICIO_FATURA_POR_VENCIMENTO = '2026-08-07';
 function mesFaturaDaCompra(l){
   const nome = l.nome || 'Cartão';
   const mesCompra = l.data.slice(0,7);
   const venc = vencimentoCartaoParaMes(nome, mesCompra);
-  return venc ? venc.slice(0,7) : addOneMonthToKey(mesCompra);
+  if(venc) return venc.slice(0,7);
+  return l.data < INICIO_FATURA_POR_VENCIMENTO ? mesCompra : addOneMonthToKey(mesCompra);
 }
 
 function cartoesAgrupados(mesFiltro){
@@ -3577,10 +3583,12 @@ function renderScoreFinanceiroMini(){
 
 function abrirScoreFinanceiro(){
   document.getElementById('scoreModal').style.display = 'flex';
+  bloquearScrollFundo();
   mudarPeriodoScore(scorePeriodoAtual);
 }
 function fecharScoreFinanceiro(){
   document.getElementById('scoreModal').style.display = 'none';
+  liberarScrollFundo();
 }
 function mudarPeriodoScore(periodo){
   scorePeriodoAtual = periodo;
@@ -4487,19 +4495,26 @@ function fecharRazao(){
   razaoFiltroNome = null;
 }
 
-// Sem isso, no celular, arrastar o dedo sobre o modal "Ver compras" também rola a tela de
-// fundo (o overlay não tem scroll próprio fora do card), dando a sensação de tela "bagunçada"
-// se movendo por baixo. Trava a página no lugar enquanto o modal está aberto.
+// Sem isso, no celular, arrastar o dedo sobre um modal (Ver compras, painel de detalhes,
+// saúde financeira) também rola a tela de fundo (o overlay não tem scroll próprio fora do
+// card), dando a sensação de tela "bagunçada" se movendo por baixo. Trava a página no lugar
+// enquanto o modal está aberto. Um contador (em vez de um booleano) permite empilhar: se um
+// modal abrir outro por cima, só libera de verdade quando o último for fechado.
+let travasScrollAbertas = 0;
 let scrollYAntesModal = null;
 function bloquearScrollFundo(){
+  travasScrollAbertas++;
   if(scrollYAntesModal !== null) return;
   scrollYAntesModal = window.scrollY;
+  document.documentElement.style.overflow = 'hidden';
   document.body.style.position = 'fixed';
   document.body.style.top = -scrollYAntesModal + 'px';
   document.body.style.width = '100%';
 }
 function liberarScrollFundo(){
-  if(scrollYAntesModal === null) return;
+  if(travasScrollAbertas > 0) travasScrollAbertas--;
+  if(travasScrollAbertas > 0 || scrollYAntesModal === null) return;
+  document.documentElement.style.overflow = '';
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
@@ -4614,6 +4629,7 @@ function abrirPainelModal(panelId){
   panel.style.display = 'block';
   document.getElementById('painelModalBody').appendChild(panel);
   document.getElementById('painelModal').style.display = 'flex';
+  bloquearScrollFundo();
   // Conta Corrente e Dívidas não filtram por mês (são saldo/total acumulados), então o
   // mini calendário só faz sentido para Despesa e Receita x Despesa.
   const semCalendario = panelId === 'panelConta' || panelId === 'panelDividas';
@@ -4632,6 +4648,7 @@ function fecharPainelModal(){
     painelModalOrigParent.insertBefore(panel, painelModalOrigNext);
   }
   document.getElementById('painelModal').style.display = 'none';
+  liberarScrollFundo();
   painelModalOrigParent = null;
   painelModalOrigNext = null;
 }
