@@ -4113,46 +4113,29 @@ document.getElementById('provisaoForm').addEventListener('submit', function(e){
 });
 document.getElementById('provisaoCancelBtn').addEventListener('click', cancelEditProvisao);
 
-// ---------- Fluxo de Caixa Projetado (lançamentos do mês + provisões futuras) ----------
-// Parcelas de cartão já lançadas para meses futuros (ex: compra em 3x) ainda não entram no
-// saldo da conta corrente (só entram quando a fatura é paga), mas já são um gasto certo —
-// por isso contam na projeção do fluxo de caixa dos próximos meses, junto com as provisões.
-// Agrupa pelo mês em que a FATURA vence (mesFaturaDaCompra), não pelo mês da compra — mesmo
-// critério usado no painel de Cartões. Como a fatura pode vencer no mês seguinte ao da compra
-// (INICIO_FATURA_POR_VENCIMENTO), usar o mês da compra faria uma parcela aparecer/desaparecer
-// do fluxo projetado no mês errado.
-function parcelasCartaoFuturasPorMes(mesReferencia){
-  return data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && mesFaturaDaCompra(l) === mesReferencia);
-}
-
+// ---------- Fluxo de Caixa Projetado (saldo atual + provisões futuras) ----------
+// saldoAtual já é o dinheiro/banco de fato, incluindo toda a movimentação (receitas e
+// despesas) já lançada no mês — não é preciso somar nada além disso pro "hoje".
+// A projeção dos meses seguintes soma só o que está em Provisões (receita - despesa,
+// incluindo "cartão previsto"). Compra de cartão já lançada (fatura normal em aberto) NÃO
+// entra aqui: ela só deve afetar o saldo quando a fatura for de fato paga (despesa "Cartão
+// de Crédito"), senão o gasto seria contado antes de sair da conta de verdade. Só a provisão
+// de cartão — uma compra futura ainda não lançada — representa gasto de cartão previsto.
 function getMesesProjetados(){
   const hoje = new Date().toISOString().slice(0,7);
   const mesesComProvisao = [...new Set((data.provisoes||[]).map(p=>p.mes))].filter(m => m >= hoje);
-  const mesesComParcelaCartao = [...new Set(
-    data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && mesFaturaDaCompra(l) > hoje).map(l => mesFaturaDaCompra(l))
-  )];
-  const meses = [...new Set([hoje].concat(mesesComProvisao).concat(mesesComParcelaCartao))].sort();
+  const meses = [...new Set([hoje].concat(mesesComProvisao))].sort();
   return meses;
 }
 
 function calcularFluxoProjetado(){
   const saldoAtual = calcularSaldoContaCorrente().saldo;
-  const hoje = new Date().toISOString().slice(0,7);
   const meses = getMesesProjetados();
   let acumulado = saldoAtual;
   const linhas = [];
   meses.forEach(mes => {
-    const provDoMes = (data.provisoes||[]).filter(p => p.mes === mes)
+    const itensDoMes = (data.provisoes||[]).filter(p => p.mes === mes)
       .sort((a,b) => a.tipo === b.tipo ? 0 : (a.tipo === 'receita' ? -1 : 1));
-    const parcelasCartaoDoMes = mes > hoje
-      ? parcelasCartaoFuturasPorMes(mes).map(l => ({
-          tipo: 'despesa',
-          categoria: l.categoria || 'Cartão de Crédito',
-          descricao: (l.nome ? l.nome + ' - ' : '') + (l.descricao || 'Cartão de crédito'),
-          valor: l.valor
-        }))
-      : [];
-    const itensDoMes = provDoMes.concat(parcelasCartaoDoMes);
     if(itensDoMes.length === 0){
       linhas.push({ mes, tipo:null, categoria:'-', descricao: (mes === meses[0] ? 'Sem provisões neste mês' : 'Sem provisões cadastradas'), valor:null, saldoAcumulado: acumulado });
     } else {
