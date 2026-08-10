@@ -3990,7 +3990,11 @@ function lancarProvisaoAgora(id){
   const p = (data.provisoes||[]).find(x => x.id === id);
   if(!p) return;
   const hojeISO = new Date().toISOString().slice(0,10);
-  const dataFinal = p.vencimento || (hojeISO.slice(0,7) === p.mes ? hojeISO : (p.mes + '-01'));
+  // Se o vencimento já passou (ou é hoje), preserva a data real. Se ainda está no futuro
+  // (ou não foi definido), usa hoje — "lançar agora" significa que o dinheiro está se
+  // movendo neste momento, adiantado em relação ao vencimento previsto; datar no futuro
+  // faria esse valor entrar no saldo atual antes da hora, sem estar na conta de fato ainda.
+  const dataFinal = (p.vencimento && p.vencimento <= hojeISO) ? p.vencimento : hojeISO;
   if(p.tipo === 'cartao'){
     // Provisão de cartão vira uma compra no cartão (tipo "cartao"), somando na fatura
     // em aberto do cartão escolhido, e não uma despesa direta na conta.
@@ -4113,15 +4117,19 @@ document.getElementById('provisaoCancelBtn').addEventListener('click', cancelEdi
 // Parcelas de cartão já lançadas para meses futuros (ex: compra em 3x) ainda não entram no
 // saldo da conta corrente (só entram quando a fatura é paga), mas já são um gasto certo —
 // por isso contam na projeção do fluxo de caixa dos próximos meses, junto com as provisões.
+// Agrupa pelo mês em que a FATURA vence (mesFaturaDaCompra), não pelo mês da compra — mesmo
+// critério usado no painel de Cartões. Como a fatura pode vencer no mês seguinte ao da compra
+// (INICIO_FATURA_POR_VENCIMENTO), usar o mês da compra faria uma parcela aparecer/desaparecer
+// do fluxo projetado no mês errado.
 function parcelasCartaoFuturasPorMes(mesReferencia){
-  return data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && l.data.slice(0,7) === mesReferencia);
+  return data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && mesFaturaDaCompra(l) === mesReferencia);
 }
 
 function getMesesProjetados(){
   const hoje = new Date().toISOString().slice(0,7);
   const mesesComProvisao = [...new Set((data.provisoes||[]).map(p=>p.mes))].filter(m => m >= hoje);
   const mesesComParcelaCartao = [...new Set(
-    data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && l.data.slice(0,7) > hoje).map(l => l.data.slice(0,7))
+    data.lancamentos.filter(l => l.tipo === 'cartao' && l.data && mesFaturaDaCompra(l) > hoje).map(l => mesFaturaDaCompra(l))
   )];
   const meses = [...new Set([hoje].concat(mesesComProvisao).concat(mesesComParcelaCartao))].sort();
   return meses;
