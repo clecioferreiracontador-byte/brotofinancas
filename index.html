@@ -1391,6 +1391,10 @@ const db = firebase.firestore();
 
 let docRef = null;
 let unsubscribeSnapshot = null;
+// Última revisão (_rev) confirmada do servidor pelo onSnapshot. saveData() usa isso pra
+// detectar, via transação, se outra aba/dispositivo salvou algo nesse meio-tempo — nesse
+// caso ela não sobrescreve, e deixa o onSnapshot repor "data" com a versão mais recente.
+let lastKnownRev = null;
 let logoutManual = false;
 let logoutPorInatividade = false;
 const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
@@ -2328,6 +2332,7 @@ auth.onAuthStateChanged(function(user){
         if(!data.orcamentos) data.orcamentos = {};
         if(!data.provisoes) data.provisoes = [];
         if(!data.metasInvestimento) data.metasInvestimento = [];
+        lastKnownRev = data._rev || 0;
       } else if(snap.metadata.fromCache){
         // Sem persistência offline habilitada, o PRIMEIRO snapshot pode vir do cache local
         // vazio dizendo "não existe" só porque a resposta real do servidor ainda não chegou
@@ -2338,12 +2343,13 @@ auth.onAuthStateChanged(function(user){
         // não faz nada e espera o próximo snapshot.
         return;
       } else {
-        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
+        let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [], _rev: 0 };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
         if(localRaw){
           try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
         }
         data = initial;
+        lastKnownRev = 0;
         docRef.set(data);
       }
       garantirNomePerfil();
@@ -2578,8 +2584,35 @@ let editingProvisaoId = null;
 let razaoAtualKey = null;
 let razaoFiltroNome = null;
 
+// Salva "data" com uma verificação de revisão via transação: se outra aba/dispositivo
+// salvou algo desde a última vez que esta aba sincronizou (lastKnownRev diferente do que
+// está no servidor agora), não sobrescreve — o onSnapshot (sempre ativo) traz a versão mais
+// recente do servidor de volta pra "data" pouco depois. Sem isso, uma aba que ficou um
+// tempo sem receber atualizações (em segundo plano, rede instável) sobrescreveria com dados
+// velhos qualquer coisa salva nesse meio-tempo por outra sessão.
 function saveData(){
-  if(docRef) docRef.set(data);
+  if(!docRef) return;
+  const docRefAtual = docRef;
+  const revEsperada = lastKnownRev;
+  data._rev = (revEsperada || 0) + 1;
+  const payload = JSON.parse(JSON.stringify(data));
+  db.runTransaction(function(tx){
+    return tx.get(docRefAtual).then(function(snap){
+      const revServidor = snap.exists ? (snap.data()._rev || 0) : 0;
+      if(revEsperada !== null && revServidor !== revEsperada){
+        throw new Error('BROTO_SYNC_CONFLICT');
+      }
+      tx.set(docRefAtual, payload);
+    });
+  }).then(function(){
+    lastKnownRev = payload._rev;
+  }).catch(function(err){
+    if(err && err.message === 'BROTO_SYNC_CONFLICT'){
+      console.warn('Não salvou: havia uma versão mais nova no servidor (outra aba/dispositivo). Os dados na tela vão atualizar automaticamente.');
+    } else {
+      console.error('Erro ao salvar:', err);
+    }
+  });
 }
 
 function fmt(v){
