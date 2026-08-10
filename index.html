@@ -2328,6 +2328,15 @@ auth.onAuthStateChanged(function(user){
         if(!data.orcamentos) data.orcamentos = {};
         if(!data.provisoes) data.provisoes = [];
         if(!data.metasInvestimento) data.metasInvestimento = [];
+      } else if(snap.metadata.fromCache){
+        // Sem persistência offline habilitada, o PRIMEIRO snapshot pode vir do cache local
+        // vazio dizendo "não existe" só porque a resposta real do servidor ainda não chegou
+        // (rede lenta/instável nesse instante) — não porque a conta seja de fato nova. Se
+        // tratássemos isso como conta nova aqui, o docRef.set(data) do ramo abaixo apagaria
+        // os dados reais do usuário no servidor. Por isso, só decide "conta nova" quando a
+        // resposta já vier confirmada do servidor (metadata.fromCache === false); até lá,
+        // não faz nada e espera o próximo snapshot.
+        return;
       } else {
         let initial = { lancamentos: [], categoriasReceita: [], categoriasDespesa: [], orcamentos: {}, provisoes: [], metasInvestimento: [] };
         const localRaw = localStorage.getItem(OLD_LOCAL_KEY);
