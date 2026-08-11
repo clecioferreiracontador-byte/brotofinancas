@@ -1449,7 +1449,9 @@ async function alternarNotificacoesPush(){
     if(token) await salvarTokenPush(token);
   }catch(e){
     console.error('Erro ao ativar notificações push:', e);
-    alert('Não foi possível ativar as notificações agora. Tente novamente em alguns instantes.');
+    // Detalhe técnico exposto no próprio alerta pra dar pra diagnosticar em dispositivos
+    // (iPhone, principalmente) onde não tem como abrir o console do navegador facilmente.
+    alert('Não foi possível ativar as notificações agora.\n\nDetalhe técnico: ' + ((e && (e.code || e.message)) || e));
   }
 }
 
