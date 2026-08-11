@@ -353,6 +353,20 @@
   #logoutNotice{color:var(--green); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;}
 
   .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px;}
+  .legal-text h4{font-size:0.92rem; margin:18px 0 6px;}
+  .legal-text h4:first-child{margin-top:0;}
+  .legal-text p, .legal-text li{font-size:0.85rem; color:var(--text); line-height:1.5; margin:0 0 10px;}
+  .legal-text ul{margin:0 0 10px; padding-left:20px;}
+  .legal-text .legal-meta{font-size:0.75rem; color:var(--muted); margin-bottom:16px;}
+  .consent-row{display:flex; align-items:flex-start; gap:8px; margin:12px 0 4px; text-align:left;}
+  .consent-row input[type="checkbox"]{min-width:auto; width:16px; height:16px; margin-top:2px; flex-shrink:0;}
+  .consent-row label{font-size:0.78rem; color:var(--muted); line-height:1.4;}
+  .consent-row a{color:var(--blue); text-decoration:underline; cursor:pointer;}
+  .login-legal-links{font-size:0.75rem; color:var(--muted); text-align:center; margin-top:10px;}
+  .login-legal-links a{color:var(--muted); text-decoration:underline; cursor:pointer;}
+  .danger-zone{border:1px solid var(--red); border-radius:10px; padding:12px; margin-top:16px;}
+  .danger-zone p{font-size:0.8rem; margin:0 0 10px;}
+  button.danger{background:var(--red); color:#fff;}
   .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto; overscroll-behavior:contain;}
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
   .modal-header h3{margin:0; font-size:1.05rem;}
@@ -775,6 +789,10 @@
         <form id="loginForm">
           <div class="field"><label>E-mail</label><input type="email" id="loginEmail" name="email" autocomplete="username" required></div>
           <div class="field"><label>Senha</label><input type="password" id="loginSenha" name="password" autocomplete="current-password" required minlength="6"></div>
+          <div class="consent-row">
+            <input type="checkbox" id="consentimentoLGPD">
+            <label for="consentimentoLGPD">Li e aceito a <a onclick="abrirPrivacidade(); return false;">Política de Privacidade</a> e os <a onclick="abrirTermos(); return false;">Termos de Uso</a> (necessário só para criar conta).</label>
+          </div>
           <button type="submit">Entrar</button>
           <button type="button" class="secondary" id="signupBtn">Criar conta</button>
           <button type="button" class="secondary" id="installAppBtnLogin" style="display:none; margin-top:8px;">
@@ -784,6 +802,7 @@
         <div id="loginError"></div>
         <div id="logoutNotice"></div>
         <div class="login-note"><span>🔒</span><span>Seus dados ficam protegidos por senha e sincronizados com segurança — nem o administrador vê sua senha.</span></div>
+        <div class="login-legal-links"><a onclick="abrirPrivacidade()">Política de Privacidade</a> · <a onclick="abrirTermos()">Termos de Uso</a></div>
       </div>
     </div>
   </div>
@@ -839,9 +858,25 @@
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
       Instalar app
     </button>
+    <button type="button" class="account-menu-item" onclick="exportarMeusDados()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      Exportar meus dados
+    </button>
+    <button type="button" class="account-menu-item" onclick="abrirPrivacidade()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg></span>
+      Política de Privacidade
+    </button>
+    <button type="button" class="account-menu-item" onclick="abrirTermos()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4"/></svg></span>
+      Termos de Uso
+    </button>
     <button type="button" class="account-menu-item" id="logoutBtn">
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
       Sair / Trocar de conta
+    </button>
+    <button type="button" class="account-menu-item" onclick="abrirExcluirConta()" style="color:var(--red);">
+      <span class="ami-icon" style="color:var(--red);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/></svg></span>
+      Excluir minha conta
     </button>
   </div>
 </div>
@@ -1379,6 +1414,139 @@
   </div>
 </div>
 
+<div id="privacidadeModal" class="modal-overlay" onclick="if(event.target===this) fecharPrivacidade()">
+  <div class="modal-card" style="max-width:680px;">
+    <div class="modal-header">
+      <h3>Política de Privacidade</h3>
+      <button class="modal-close-btn" onclick="fecharPrivacidade()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="legal-text">
+      <div class="legal-meta">Versão 1.0 · Vigente desde 11/08/2026</div>
+
+      <h4>1. Quem trata os seus dados</h4>
+      <p>O Broto Finanças ("Broto", "nós") é operado por <strong>[RAZÃO SOCIAL OU NOME COMPLETO DO RESPONSÁVEL PELO APP]</strong>, inscrito(a) no CPF/CNPJ <strong>[NÚMERO]</strong>, que atua como controlador dos dados pessoais tratados nesta Política, nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais — LGPD).</p>
+
+      <h4>2. Quais dados coletamos</h4>
+      <ul>
+        <li><strong>Dados de cadastro:</strong> e-mail e senha (a senha é armazenada de forma criptografada pelo Firebase Authentication; nem a equipe do Broto tem acesso a ela).</li>
+        <li><strong>Dados de perfil:</strong> nome de exibição e foto de perfil, quando você escolhe informá-los.</li>
+        <li><strong>Dados financeiros que você mesmo cadastra:</strong> lançamentos, categorias, orçamentos, provisões, cartões, dívidas, metas de investimento e saldos — inseridos manualmente ou importados por você de extratos (OFX, CSV ou PDF).</li>
+        <li><strong>Dados técnicos:</strong> token do dispositivo para envio de notificações push (quando você ativa essa função) e informações de diagnóstico (como tipo de erro, navegador e identificador da conta) enviadas ao serviço de monitoramento de erros quando o app trava ou falha.</li>
+        <li><strong>Preferências locais:</strong> tema (claro/escuro) e se você já viu a tela de boas-vindas — ficam salvas só no seu aparelho (localStorage), não são enviadas aos nossos servidores.</li>
+      </ul>
+
+      <h4>3. Para que usamos os seus dados e em qual base legal</h4>
+      <ul>
+        <li><strong>Fornecer o serviço</strong> (autenticação, sincronização dos seus dados entre aparelhos, cálculo de saldos e relatórios) — execução de contrato (art. 7º, V, LGPD).</li>
+        <li><strong>Enviar notificações e alertas</strong> que você mesmo ativou no app — consentimento (art. 7º, I, LGPD), revogável a qualquer momento desativando a opção no menu.</li>
+        <li><strong>Identificar e corrigir erros técnicos</strong>, mantendo o app estável — legítimo interesse (art. 7º, IX, LGPD), limitado a dados técnicos necessários para o diagnóstico.</li>
+      </ul>
+      <p>Nunca usamos seus dados financeiros para publicidade, não os vendemos e não os compartilhamos com terceiros para fins comerciais.</p>
+
+      <h4>4. Com quem compartilhamos dados (operadores)</h4>
+      <ul>
+        <li><strong>Google Firebase</strong> (Google Cloud): hospeda a autenticação, o banco de dados (Firestore) e o envio de notificações push.</li>
+        <li><strong>Sentry:</strong> recebe dados técnicos de erros (incluindo seu e-mail e identificador de conta) para nos ajudar a corrigir falhas do app.</li>
+        <li><strong>GitHub Pages:</strong> hospeda os arquivos estáticos do aplicativo.</li>
+      </ul>
+      <p>Esses parceiros atuam como operadores, tratando os dados apenas conforme nossas instruções e finalidades descritas aqui.</p>
+
+      <h4>5. Como protegemos seus dados</h4>
+      <p>O acesso aos seus dados financeiros no banco de dados é restrito à sua própria conta (regras de acesso vinculadas ao seu usuário). A comunicação entre o app e os servidores é sempre criptografada (HTTPS/TLS). Sua senha nunca é armazenada em texto legível.</p>
+
+      <h4>6. Por quanto tempo guardamos seus dados</h4>
+      <p>Seus dados são mantidos enquanto sua conta existir. Ao excluir sua conta pelo próprio app, seus dados financeiros e seu cadastro são apagados de forma permanente dos nossos sistemas de produção; cópias de segurança (backups), quando existentes, são removidas em até 90 dias.</p>
+
+      <h4>7. Seus direitos como titular de dados</h4>
+      <p>Nos termos do art. 18 da LGPD, você pode, a qualquer momento:</p>
+      <ul>
+        <li>Confirmar a existência de tratamento e acessar seus dados — todos os seus dados financeiros já ficam visíveis no próprio app.</li>
+        <li>Exportar uma cópia completa dos seus dados em formato legível (JSON), pela opção "Exportar meus dados" no menu da conta.</li>
+        <li>Corrigir dados incompletos, inexatos ou desatualizados, editando-os diretamente no app.</li>
+        <li>Excluir permanentemente sua conta e todos os dados associados, pela opção "Excluir minha conta" no menu da conta.</li>
+        <li>Revogar o consentimento dado (por exemplo, desativando notificações push).</li>
+        <li>Solicitar informações sobre o compartilhamento de dados, ou apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD).</li>
+      </ul>
+      <p>Para exercer outros direitos ou tirar dúvidas, entre em contato pelo e-mail <strong>[E-MAIL DE CONTATO / ENCARREGADO DE DADOS]</strong>.</p>
+
+      <h4>8. Cookies e armazenamento local</h4>
+      <p>O Broto não usa cookies de rastreamento ou publicidade. Usamos apenas armazenamento local do navegador (localStorage) para lembrar preferências como tema e se você já viu a tela de boas-vindas — essas informações não saem do seu aparelho.</p>
+
+      <h4>9. Uso por menores de idade</h4>
+      <p>O Broto não é direcionado a menores de 18 anos. Caso um responsável legal cadastre uma conta em nome de um menor, a responsabilidade pelo tratamento adequado dos dados é do responsável.</p>
+
+      <h4>10. Alterações desta Política</h4>
+      <p>Podemos atualizar esta Política periodicamente. Alterações relevantes serão comunicadas dentro do próprio app, com a data de vigência atualizada no topo deste documento.</p>
+
+      <h4>11. Contato</h4>
+      <p>Dúvidas, solicitações ou reclamações sobre o tratamento dos seus dados pessoais podem ser enviadas para <strong>[E-MAIL DE CONTATO / ENCARREGADO DE DADOS]</strong>.</p>
+    </div>
+  </div>
+</div>
+
+<div id="termosModal" class="modal-overlay" onclick="if(event.target===this) fecharTermos()">
+  <div class="modal-card" style="max-width:680px;">
+    <div class="modal-header">
+      <h3>Termos de Uso</h3>
+      <button class="modal-close-btn" onclick="fecharTermos()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="legal-text">
+      <div class="legal-meta">Versão 1.0 · Vigente desde 11/08/2026</div>
+
+      <h4>1. Aceite dos Termos</h4>
+      <p>Ao criar uma conta no Broto Finanças, você concorda com estes Termos de Uso e com a nossa <a onclick="fecharTermos(); abrirPrivacidade();">Política de Privacidade</a>. Se você não concordar, não utilize o aplicativo.</p>
+
+      <h4>2. Descrição do serviço</h4>
+      <p>O Broto é uma ferramenta de organização financeira pessoal, que permite registrar lançamentos, orçamentos, cartões, dívidas e metas. O Broto <strong>não presta consultoria financeira, contábil, tributária ou de investimentos</strong> — as informações e cálculos exibidos são apenas apoio à sua organização e não substituem orientação profissional.</p>
+
+      <h4>3. Cadastro e segurança da conta</h4>
+      <p>Você é responsável por manter a confidencialidade da sua senha e por todas as atividades realizadas na sua conta. Avise-nos imediatamente em caso de uso não autorizado.</p>
+
+      <h4>4. Uso adequado</h4>
+      <p>Você se compromete a usar o Broto apenas para fins lícitos e a não inserir dados pessoais de terceiros (como informações financeiras de outra pessoa) sem a autorização dela. Você é o único responsável pela exatidão dos dados que cadastra.</p>
+
+      <h4>5. Disponibilidade do serviço</h4>
+      <p>Fazemos o possível para manter o app disponível e funcionando corretamente, mas não garantimos disponibilidade ininterrupta. Podemos realizar manutenções, atualizações ou, em casos excepcionais, descontinuar funcionalidades, sempre buscando preservar seus dados.</p>
+
+      <h4>6. Propriedade intelectual</h4>
+      <p>A marca, o layout e o código do Broto são de propriedade de <strong>[RAZÃO SOCIAL OU NOME COMPLETO DO RESPONSÁVEL PELO APP]</strong>. Os dados que você insere no app são seus; não reivindicamos propriedade sobre o conteúdo que você cadastra.</p>
+
+      <h4>7. Encerramento da conta</h4>
+      <p>Você pode excluir sua conta a qualquer momento pela opção "Excluir minha conta" no menu, o que remove permanentemente seus dados dos nossos sistemas, conforme descrito na Política de Privacidade.</p>
+
+      <h4>8. Alterações destes Termos</h4>
+      <p>Podemos atualizar estes Termos periodicamente. Alterações relevantes serão comunicadas dentro do próprio app.</p>
+
+      <h4>9. Legislação aplicável e foro</h4>
+      <p>Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro do domicílio do usuário para dirimir eventuais controvérsias, conforme o Código de Defesa do Consumidor, quando aplicável.</p>
+    </div>
+  </div>
+</div>
+
+<div id="excluirContaModal" class="modal-overlay" onclick="if(event.target===this) fecharExcluirConta()">
+  <div class="modal-card" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Excluir minha conta</h3>
+      <button class="modal-close-btn" onclick="fecharExcluirConta()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="danger-zone">
+      <p>Isso vai apagar <strong>permanentemente</strong> a sua conta e todos os seus dados financeiros (lançamentos, cartões, orçamentos, metas etc.). Essa ação não pode ser desfeita.</p>
+      <p>Se quiser guardar uma cópia antes, use "Exportar meus dados" no menu.</p>
+    </div>
+    <form id="excluirContaForm" style="margin-top:14px;">
+      <div class="field"><label>Confirme sua senha para continuar</label><input type="password" id="excluirContaSenha" autocomplete="current-password" required minlength="6"></div>
+      <button type="submit" class="danger">Excluir permanentemente</button>
+    </form>
+    <div id="excluirContaErro" style="color:var(--red); font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;"></div>
+  </div>
+</div>
+
 <script>
 // Aplica o tema salvo o quanto antes, pra evitar o "flash" do tema errado ao carregar a página.
 if(localStorage.getItem('micelc_tema') === 'claro'){
@@ -1497,7 +1665,12 @@ let unsubscribeSnapshot = null;
 let lastKnownRev = null;
 let logoutManual = false;
 let logoutPorInatividade = false;
+let contaExcluida = false;
 const OLD_LOCAL_KEY = 'painel_financeiro_data_v2';
+// Versão da Política de Privacidade/Termos aceita no cadastro — usada para registrar o
+// consentimento (LGPD) e, se os textos mudarem de forma relevante, saber quem aceitou o quê.
+const CONSENT_VERSION = '1.0';
+let pendingConsentLGPD = null;
 
 // Desloga automaticamente após 40 minutos sem nenhuma interação, por segurança.
 const INATIVIDADE_LIMITE_MS = 40 * 60 * 1000;
@@ -1535,7 +1708,8 @@ function traduzErroFirebase(code){
     'auth/email-already-in-use': 'Esse e-mail já tem uma conta. Tente entrar em vez de criar conta.',
     'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
     'auth/missing-password': 'Digite uma senha.',
-    'auth/too-many-requests': 'Muitas tentativas. Aguarde um instante e tente novamente.'
+    'auth/too-many-requests': 'Muitas tentativas. Aguarde um instante e tente novamente.',
+    'auth/requires-recent-login': 'Por segurança, informe sua senha novamente para confirmar.'
   };
   return mapa[code] || 'Não foi possível concluir. Tente novamente.';
 }
@@ -1586,12 +1760,15 @@ function showLogin(){
   closeNotifPanel();
   document.getElementById('loginForm').reset();
   document.getElementById('loginError').textContent = '';
-  const saiuDeProposito = logoutManual || logoutPorInatividade;
-  document.getElementById('logoutNotice').textContent = logoutManual
+  const saiuDeProposito = logoutManual || logoutPorInatividade || contaExcluida;
+  document.getElementById('logoutNotice').textContent = contaExcluida
+    ? 'Sua conta e todos os seus dados foram excluídos permanentemente.'
+    : logoutManual
     ? 'Você saiu da conta. Entre com outro e-mail e senha para trocar de conta.'
     : (logoutPorInatividade ? 'Você ficou mais de 40 minutos inativo e foi desconectado por segurança. Entre novamente.' : '');
   logoutManual = false;
   logoutPorInatividade = false;
+  contaExcluida = false;
   if(inatividadeTimer) clearTimeout(inatividadeTimer);
   document.body.classList.remove('valores-ocultos');
   // Só tenta login automático com credencial salva quando a tela de login aparece "do nada"
@@ -2449,6 +2626,10 @@ auth.onAuthStateChanged(function(user){
         if(localRaw){
           try{ const parsed = JSON.parse(localRaw); if(parsed && parsed.lancamentos) initial = Object.assign(initial, parsed); }catch(e){}
         }
+        if(pendingConsentLGPD){
+          initial.consentimentoLGPD = pendingConsentLGPD;
+          pendingConsentLGPD = null;
+        }
         data = initial;
         lastKnownRev = 0;
         docRef.set(data);
@@ -2536,9 +2717,15 @@ document.getElementById('signupBtn').addEventListener('click', function(){
     document.getElementById('loginError').textContent = 'Preencha e-mail e uma senha com pelo menos 6 caracteres.';
     return;
   }
+  if(!document.getElementById('consentimentoLGPD').checked){
+    document.getElementById('loginError').textContent = 'Para criar uma conta, marque que você aceita a Política de Privacidade e os Termos de Uso.';
+    return;
+  }
+  pendingConsentLGPD = { aceito: true, versao: CONSENT_VERSION, dataHora: new Date().toISOString() };
   auth.createUserWithEmailAndPassword(email, senha).then(function(){
     salvarCredencialNoNavegador(email, senha);
   }).catch(function(err){
+    pendingConsentLGPD = null;
     document.getElementById('loginError').textContent = traduzErroFirebase(err.code);
   });
 });
@@ -3740,6 +3927,92 @@ function fecharScoreFinanceiro(){
   document.getElementById('scoreModal').style.display = 'none';
   liberarScrollFundo();
 }
+
+// ---------- LGPD: Política de Privacidade, Termos de Uso, exportação e exclusão de dados ----------
+function abrirPrivacidade(){
+  closeAccountMenu();
+  document.getElementById('privacidadeModal').style.display = 'flex';
+  bloquearScrollFundo();
+}
+function fecharPrivacidade(){
+  document.getElementById('privacidadeModal').style.display = 'none';
+  liberarScrollFundo();
+}
+function abrirTermos(){
+  closeAccountMenu();
+  document.getElementById('termosModal').style.display = 'flex';
+  bloquearScrollFundo();
+}
+function fecharTermos(){
+  document.getElementById('termosModal').style.display = 'none';
+  liberarScrollFundo();
+}
+
+// Direito de acesso/portabilidade (art. 18 da LGPD): baixa uma cópia de tudo que está
+// guardado na conta do usuário, no formato em que fica salvo no Firestore.
+function exportarMeusDados(){
+  closeAccountMenu();
+  const user = auth.currentUser;
+  if(!user) return;
+  const payload = {
+    exportadoEm: new Date().toISOString(),
+    conta: { uid: user.uid, email: user.email },
+    dados: data
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'broto-meus-dados-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function abrirExcluirConta(){
+  closeAccountMenu();
+  document.getElementById('excluirContaSenha').value = '';
+  document.getElementById('excluirContaErro').textContent = '';
+  document.querySelector('#excluirContaForm button[type="submit"]').disabled = false;
+  document.getElementById('excluirContaModal').style.display = 'flex';
+  bloquearScrollFundo();
+}
+function fecharExcluirConta(){
+  document.getElementById('excluirContaModal').style.display = 'none';
+  liberarScrollFundo();
+}
+
+// Direito de eliminação (art. 18 da LGPD): apaga a conta e todos os dados vinculados a ela.
+// Pede a senha de novo porque o Firebase exige um login "recente" para excluir a conta —
+// e cancela a inscrição do onSnapshot ANTES de apagar o documento, pra ele não recriar os
+// dados vazios ao ver o documento "desaparecer" enquanto ainda estamos autenticados.
+document.getElementById('excluirContaForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const user = auth.currentUser;
+  if(!user) return;
+  const erroEl = document.getElementById('excluirContaErro');
+  const submitBtn = document.querySelector('#excluirContaForm button[type="submit"]');
+  erroEl.textContent = '';
+  submitBtn.disabled = true;
+  const senha = document.getElementById('excluirContaSenha').value;
+  const credential = firebase.auth.EmailAuthProvider.credential(user.email, senha);
+  user.reauthenticateWithCredential(credential).then(function(){
+    if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    return db.collection('usuarios').doc(user.uid).collection('push').doc('tokens').delete().catch(function(){});
+  }).then(function(){
+    return db.collection('usuarios').doc(user.uid).delete();
+  }).then(function(){
+    return user.delete();
+  }).then(function(){
+    contaExcluida = true;
+    fecharExcluirConta();
+  }).catch(function(err){
+    submitBtn.disabled = false;
+    erroEl.textContent = traduzErroFirebase(err.code);
+  });
+});
+
 function mudarPeriodoScore(periodo){
   scorePeriodoAtual = periodo;
   document.querySelectorAll('.score-tab').forEach(btn => {
