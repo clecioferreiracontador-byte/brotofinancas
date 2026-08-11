@@ -1,0 +1,8 @@
+{
+  "name": "broto-scripts",
+  "description": "Script agendado (via GitHub Actions) que envia as notificações push diárias do Broto",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

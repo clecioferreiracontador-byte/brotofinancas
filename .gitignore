@@ -1,0 +1,8 @@
+node_modules/
+*.log
+
+# Nunca commitar a chave de Service Account do Firebase — ela vai só como secret do GitHub.
+scripts/serviceAccountKey.json
+serviceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json

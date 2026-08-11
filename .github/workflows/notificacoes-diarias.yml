@@ -1,0 +1,24 @@
+name: Notificações diárias do Broto
+
+on:
+  schedule:
+    # 11:00 UTC = 08:00 em Brasília (UTC-3 o ano inteiro, o Brasil não usa mais horário de verão)
+    - cron: '0 11 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  notificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instala dependências
+        working-directory: scripts
+        run: npm install
+      - name: Envia notificações pendentes
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notificar-alertas.js

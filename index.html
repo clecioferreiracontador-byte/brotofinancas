@@ -18,10 +18,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f172a">
+<!-- Sentry: monitoramento de erros em produção. Pegue a URL certa em Sentry > Settings >
+     Projects > (seu projeto) > SDK Setup > Loader Script, e troque a linha abaixo por ela. -->
+<script
+  src="https://js.sentry-cdn.com/COLE_AQUI_SUA_CHAVE_PUBLICA_DO_SENTRY.min.js"
+  crossorigin="anonymous"
+></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <style>
   :root{
     --bg:#0f172a; --card:#1e293b; --card2:#162032; --text:#e2e8f0; --muted:#94a3b8;
@@ -824,6 +831,10 @@
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4"/></svg></span>
       Relatório do mês
     </button>
+    <button type="button" class="account-menu-item" id="pushNotifBtn" onclick="alternarNotificacoesPush()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <span id="pushNotifLabel">Ativar notificações push</span>
+    </button>
     <button type="button" class="account-menu-item" id="installAppBtn" style="display:none;">
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span>
       Instalar app
@@ -1389,6 +1400,93 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// ---------- Notificações Push (Firebase Cloud Messaging) ----------
+// Chave pública VAPID deste projeto Firebase — gere em Configurações do projeto >
+// Cloud Messaging > "Certificados push da Web" > "Gerar par de chaves", e cole aqui.
+// Sem essa chave, getToken() abaixo falha silenciosamente (nenhuma notificação chega).
+const VAPID_KEY_PUBLICA = 'BAKU0hQeV7x3owTmNiDeYDJS02t_AVFsgkaclJw7y-mAhffvh0OuUg2O9xe6T-ZfJQ7mjaCcwPvq4O2OhCdCxzw';
+
+let messaging = null;
+try{
+  if(firebase.messaging && firebase.messaging.isSupported && firebase.messaging.isSupported()){
+    messaging = firebase.messaging();
+  }
+}catch(e){ console.warn('Notificações push não suportadas neste navegador:', e); }
+
+function atualizarLabelPushMenu(){
+  const label = document.getElementById('pushNotifLabel');
+  if(!label) return;
+  if(!messaging || !('Notification' in window)){
+    label.textContent = 'Notificações push indisponíveis neste navegador';
+  } else if(Notification.permission === 'granted'){
+    label.textContent = 'Notificações push ativadas';
+  } else if(Notification.permission === 'denied'){
+    label.textContent = 'Notificações bloqueadas (ative no navegador)';
+  } else {
+    label.textContent = 'Ativar notificações push';
+  }
+}
+
+async function alternarNotificacoesPush(){
+  if(!messaging){
+    alert('Este navegador não suporta notificações push. No iPhone, é preciso primeiro adicionar o Broto à Tela de Início (menu Instalar app) e abrir por lá.');
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    alert('As notificações estão bloqueadas para o Broto. Para ativar, abra as configurações do site nas opções do navegador e permita notificações manualmente.');
+    return;
+  }
+  if(VAPID_KEY_PUBLICA === 'COLE_AQUI_A_CHAVE_VAPID_GERADA_NO_FIREBASE'){
+    alert('Notificações push ainda não configuradas neste app (falta a chave VAPID do Firebase).');
+    return;
+  }
+  try{
+    const permissao = await Notification.requestPermission();
+    atualizarLabelPushMenu();
+    if(permissao !== 'granted') return;
+    const registration = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    const token = await messaging.getToken({ vapidKey: VAPID_KEY_PUBLICA, serviceWorkerRegistration: registration });
+    if(token) await salvarTokenPush(token);
+  }catch(e){
+    console.error('Erro ao ativar notificações push:', e);
+    alert('Não foi possível ativar as notificações agora. Tente novamente em alguns instantes.');
+  }
+}
+
+// Guardado numa coleção separada do documento principal do usuário (que saveData()
+// sobrescreve por inteiro a cada alteração) para o token nunca ser apagado sem querer.
+async function salvarTokenPush(token){
+  const user = auth.currentUser;
+  if(!user || !token) return;
+  await db.collection('usuarios').doc(user.uid).collection('push').doc('tokens').set({
+    tokens: firebase.firestore.FieldValue.arrayUnion(token),
+    atualizadoEm: new Date().toISOString()
+  }, { merge: true });
+}
+
+if(messaging){
+  // App aberto em primeiro plano: o FCM não aciona notificação do sistema sozinho,
+  // então só atualizamos o sino/lista interna de alertas que já existe.
+  messaging.onMessage(function(){ renderNotificacoes(); });
+}
+
+// ---------- Monitoramento de erros em produção (Sentry) ----------
+// Sentry.onLoad só existe depois que o Loader Script (tag no <head>) carregou de fato —
+// se a chave pública ainda não foi configurada lá, window.Sentry nem existe.
+if(window.Sentry){
+  Sentry.onLoad(function(){
+    Sentry.init({
+      // Não manda dados de formulário/input por padrão — só o que o SDK captura sozinho
+      // (erro, stack trace, navegador). Evite console.log/alert com dados financeiros
+      // sensíveis do usuário, pois eles podem ir como "breadcrumb" junto do erro.
+      sendDefaultPii: false
+    });
+    auth.onAuthStateChanged(function(user){
+      Sentry.setUser(user ? { id: user.uid, email: user.email } : null);
+    });
+  });
+}
+
 let docRef = null;
 let unsubscribeSnapshot = null;
 // Última revisão (_rev) confirmada do servidor pelo onSnapshot. saveData() usa isso pra
@@ -1514,6 +1612,7 @@ function showApp(){
 function toggleAccountMenu(){
   closeNotifPanel();
   document.getElementById('accountMenu').classList.toggle('open');
+  atualizarLabelPushMenu();
 }
 function closeAccountMenu(){
   document.getElementById('accountMenu').classList.remove('open');
