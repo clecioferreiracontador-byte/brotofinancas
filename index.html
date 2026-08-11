@@ -3972,6 +3972,7 @@ function exportarMeusDados(){
 
 function abrirExcluirConta(){
   closeAccountMenu();
+  if(!confirm('Tem certeza que quer excluir sua conta? Todos os seus dados financeiros serão apagados permanentemente e essa ação não pode ser desfeita.')) return;
   document.getElementById('excluirContaSenha').value = '';
   document.getElementById('excluirContaErro').textContent = '';
   document.querySelector('#excluirContaForm button[type="submit"]').disabled = false;
