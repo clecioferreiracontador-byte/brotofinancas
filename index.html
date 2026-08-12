@@ -29,6 +29,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<!-- EmailJS: envia o formulário de "Fale com a gente" direto para o e-mail do administrador,
+     sem precisar de um backend/Cloud Function (mesma lógica de evitar o plano Blaze usada no
+     restante do projeto). Configuração em emailjs.com — ver constantes EMAILJS_* abaixo. -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --bg:#0f172a; --card:#1e293b; --card2:#162032; --text:#e2e8f0; --muted:#94a3b8;
@@ -107,11 +111,12 @@
 
   form.inline{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:14px;}
   .field{display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--muted);}
-  input, select{
+  input, select, textarea{
     background:var(--card2); border:1px solid var(--border); color:var(--text);
     padding:8px 10px; border-radius:8px; font-size:0.9rem; min-width:110px;
-    height:40px; box-sizing:border-box;
+    height:40px; box-sizing:border-box; font-family:inherit;
   }
+  textarea{ height:auto; resize:vertical; }
   /* Safari/iOS ignora width:100% em input[type=date|month] e mantém a largura intrínseca,
      fazendo o conteúdo (ícone do calendário) ficar desalinhado/cortado na lateral direita. */
   input[type="date"], input[type="month"]{ -webkit-min-logical-width:100%; }
@@ -631,7 +636,7 @@
        (inputs nativos como o de data podem renderizar com alturas diferentes de aparelho pra
        aparelho, então colocar dois na mesma linha é frágil). */
     .field{ min-width:0; flex:1 1 100%; }
-    .field input, .field select{ width:100%; }
+    .field input, .field select, .field textarea{ width:100%; }
     input, select{ font-size:0.82rem; padding:7px 8px; min-width:0; height:38px; }
 
     table{ font-size:0.74rem; }
@@ -789,6 +794,7 @@
         <form id="loginForm">
           <div class="field"><label>E-mail</label><input type="email" id="loginEmail" name="email" autocomplete="username" required></div>
           <div class="field"><label>Senha</label><input type="password" id="loginSenha" name="password" autocomplete="current-password" required minlength="6"></div>
+          <div style="text-align:right; margin-top:-6px;"><a onclick="abrirRecuperarSenha(); return false;" style="font-size:0.78rem; color:var(--muted); text-decoration:underline; cursor:pointer;">Esqueci minha senha</a></div>
           <div class="consent-row">
             <input type="checkbox" id="consentimentoLGPD">
             <label for="consentimentoLGPD">Li e aceito a <a onclick="abrirPrivacidade(); return false;">Política de Privacidade</a> e os <a onclick="abrirTermos(); return false;">Termos de Uso</a> (necessário só para criar conta).</label>
@@ -869,6 +875,10 @@
     <button type="button" class="account-menu-item" onclick="abrirTermos()">
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4"/></svg></span>
       Termos de Uso
+    </button>
+    <button type="button" class="account-menu-item" onclick="abrirContato()">
+      <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z" opacity="0"/><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg></span>
+      Fale com a gente
     </button>
     <button type="button" class="account-menu-item" id="logoutBtn">
       <span class="ami-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
@@ -1547,6 +1557,41 @@
   </div>
 </div>
 
+<div id="recuperarSenhaModal" class="modal-overlay" onclick="if(event.target===this) fecharRecuperarSenha()">
+  <div class="modal-card" style="max-width:380px;">
+    <div class="modal-header">
+      <h3>Recuperar senha</h3>
+      <button class="modal-close-btn" onclick="fecharRecuperarSenha()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="sub" style="margin-bottom:14px;">Digite seu e-mail e enviaremos um link para você criar uma nova senha.</p>
+    <form id="recuperarSenhaForm">
+      <div class="field"><label>E-mail</label><input type="email" id="recuperarSenhaEmail" required></div>
+      <button type="submit">Enviar link de recuperação</button>
+    </form>
+    <div id="recuperarSenhaMsg" style="font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;"></div>
+  </div>
+</div>
+
+<div id="contatoModal" class="modal-overlay" onclick="if(event.target===this) fecharContato()">
+  <div class="modal-card" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Fale com a gente</h3>
+      <button class="modal-close-btn" onclick="fecharContato()" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="sub" style="margin-bottom:14px;">Encontrou um problema ou tem uma sugestão? Escreva abaixo — a mensagem chega direto no nosso e-mail.</p>
+    <form id="contatoForm">
+      <div class="field"><label>Assunto</label><input type="text" id="contatoAssunto" maxlength="120" required></div>
+      <div class="field"><label>Mensagem</label><textarea id="contatoMensagem" rows="5" maxlength="2000" required></textarea></div>
+      <button type="submit">Enviar mensagem</button>
+    </form>
+    <div id="contatoMsg" style="font-size:0.8rem; margin-top:10px; text-align:center; min-height:1em;"></div>
+  </div>
+</div>
+
 <script>
 // Aplica o tema salvo o quanto antes, pra evitar o "flash" do tema errado ao carregar a página.
 if(localStorage.getItem('micelc_tema') === 'claro'){
@@ -1567,6 +1612,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// ---------- Canal de contato (EmailJS) ----------
+// Crie uma conta gratuita em emailjs.com (sem backend/custo de servidor, mesma filosofia do
+// resto do projeto). Passos: 1) Email Services > conecte o Gmail que deve RECEBER as mensagens;
+// 2) Email Templates > crie um template usando as variáveis {{from_name}}, {{from_email}},
+// {{subject}} e {{message}}, e defina o campo "To Email" do template como o seu próprio e-mail;
+// 3) Account > General > copie a Public Key. Cole os três valores abaixo.
+const EMAILJS_PUBLIC_KEY = 'fIstAdDnG_H22--FB';
+const EMAILJS_SERVICE_ID = 'service_04b1msd';
+const EMAILJS_TEMPLATE_ID = 'template_od6jm3n';
 
 // ---------- Notificações Push (Firebase Cloud Messaging) ----------
 // Chave pública VAPID deste projeto Firebase — gere em Configurações do projeto >
@@ -2733,6 +2788,39 @@ document.getElementById('logoutBtn').addEventListener('click', function(){
   logoutManual = true;
   ocultarIconesTopo();
   auth.signOut();
+});
+
+function abrirRecuperarSenha(){
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('logoutNotice').textContent = '';
+  document.getElementById('recuperarSenhaEmail').value = document.getElementById('loginEmail').value.trim();
+  document.getElementById('recuperarSenhaMsg').textContent = '';
+  document.getElementById('recuperarSenhaMsg').style.color = '';
+  document.querySelector('#recuperarSenhaForm button[type="submit"]').disabled = false;
+  document.getElementById('recuperarSenhaModal').style.display = 'flex';
+  bloquearScrollFundo();
+}
+function fecharRecuperarSenha(){
+  document.getElementById('recuperarSenhaModal').style.display = 'none';
+  liberarScrollFundo();
+}
+document.getElementById('recuperarSenhaForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const email = document.getElementById('recuperarSenhaEmail').value.trim();
+  const msgEl = document.getElementById('recuperarSenhaMsg');
+  const submitBtn = document.querySelector('#recuperarSenhaForm button[type="submit"]');
+  msgEl.style.color = '';
+  msgEl.textContent = '';
+  submitBtn.disabled = true;
+  auth.sendPasswordResetEmail(email).then(function(){
+    fecharRecuperarSenha();
+    document.getElementById('logoutNotice').textContent = 'Enviamos um link de redefinição de senha para ' + email + '. Confira sua caixa de entrada (e o spam).';
+  }).catch(function(err){
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = traduzErroFirebase(err.code);
+  }).finally(function(){
+    submitBtn.disabled = false;
+  });
 });
 
 // ---------- Instalar app (PWA) ----------
@@ -4011,6 +4099,49 @@ document.getElementById('excluirContaForm').addEventListener('submit', function(
   }).catch(function(err){
     submitBtn.disabled = false;
     erroEl.textContent = traduzErroFirebase(err.code);
+  });
+});
+
+function abrirContato(){
+  closeAccountMenu();
+  document.getElementById('contatoAssunto').value = '';
+  document.getElementById('contatoMensagem').value = '';
+  document.getElementById('contatoMsg').textContent = '';
+  document.getElementById('contatoMsg').style.color = '';
+  document.getElementById('contatoModal').style.display = 'flex';
+  bloquearScrollFundo();
+}
+function fecharContato(){
+  document.getElementById('contatoModal').style.display = 'none';
+  liberarScrollFundo();
+}
+document.getElementById('contatoForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const msgEl = document.getElementById('contatoMsg');
+  const submitBtn = document.querySelector('#contatoForm button[type="submit"]');
+  msgEl.style.color = '';
+  msgEl.textContent = '';
+  if(EMAILJS_PUBLIC_KEY.indexOf('COLE_AQUI') === 0){
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = 'Canal de contato ainda não configurado. Tente novamente mais tarde.';
+    return;
+  }
+  const user = auth.currentUser;
+  submitBtn.disabled = true;
+  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    from_name: (user && user.email) || 'Usuário do Broto',
+    from_email: (user && user.email) || 'não informado',
+    subject: document.getElementById('contatoAssunto').value.trim(),
+    message: document.getElementById('contatoMensagem').value.trim()
+  }, EMAILJS_PUBLIC_KEY).then(function(){
+    msgEl.style.color = 'var(--green)';
+    msgEl.textContent = 'Mensagem enviada! Vamos responder no seu e-mail assim que possível.';
+    setTimeout(fecharContato, 1800);
+  }).catch(function(){
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = 'Não foi possível enviar agora. Tente novamente em instantes.';
+  }).finally(function(){
+    submitBtn.disabled = false;
   });
 });
 
