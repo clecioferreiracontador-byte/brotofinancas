@@ -3369,8 +3369,17 @@ function formaDoItem(l){
 }
 function calcularSaldoPorForma(forma){
   const contaEntries = data.lancamentos.filter(l => l.tipo === 'conta' && formaDoItem(l) === forma);
+  // Dentro do bucket "Banco" pode haver vários bancos específicos (Nubank, Itaú, "Banco"
+  // genérico...), cada um com seu próprio ajuste de saldo base — soma o ajuste mais recente de
+  // CADA banco, em vez de considerar só o lançamento tipo conta mais recente do bucket inteiro
+  // (isso perderia a base de qualquer banco que não fosse o último ajustado).
+  const baselinePorNome = {};
+  contaEntries.forEach(l => {
+    const nome = l.forma || forma;
+    if(!baselinePorNome[nome] || l.data >= baselinePorNome[nome].data) baselinePorNome[nome] = l;
+  });
+  const baselineValor = Object.values(baselinePorNome).reduce((s,l) => s + Number(l.valor), 0);
   const baseline = contaEntries.length ? contaEntries.reduce((a,b) => (b.data >= a.data ? b : a)) : null;
-  const baselineValor = baseline ? Number(baseline.valor) : 0;
   const movimentos = data.lancamentos.filter(l => (l.tipo === 'receita' || l.tipo === 'despesa') && formaDoItem(l) === forma);
   const somaMovimentos = movimentos.reduce((s,l) => s + (l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor)), 0);
   return { saldo: baselineValor + somaMovimentos, baseline, movimentos };
