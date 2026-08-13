@@ -383,11 +383,13 @@
   .modal-close-btn svg{ width:20px; height:20px; }
   .modal-header-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .mini-cal-input{ min-width:0; width:130px; height:32px; padding:4px 8px; font-size:0.78rem; }
-  /* Relatório do mês: força os 3 campos (Ver por / De / Até) a terem exatamente a mesma
-     largura sempre — alguns navegadores mobile dão um "tamanho nativo" um pouco diferente pra
-     <select> vs <input type=month/date>, então isso evita que um fique mais largo que o outro. */
+  /* Relatório do mês: usa o tamanho compacto padrão do .mini-cal-input (130px) em vez de esticar
+     pra 100% — em alguns navegadores mobile o input[type=month] mantinha a largura nativa mesmo
+     com width:100%, ultrapassando o quadro do modal. Precisa repetir "width" aqui (não só
+     confiar na classe .mini-cal-input) porque a regra ".field input{width:100%}" do mobile tem
+     mais especificidade que uma classe sozinha. -webkit-min-logical-width trava esse mínimo. */
   #relatorioModoPeriodo, #relatorioMesDe, #relatorioMesAte{
-    display:block; width:100%; max-width:100%; min-width:0; box-sizing:border-box;
+    width:130px; max-width:100%; -webkit-min-logical-width:130px;
   }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
