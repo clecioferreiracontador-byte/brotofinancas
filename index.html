@@ -5120,7 +5120,14 @@ function renderRazaoContent(){
 }
 
 function renderChartRazaoCartaoCategorias(){
-  const itens = data.lancamentos.filter(l => l.tipo === 'cartao' && (!razaoFiltroNome || l.nome === razaoFiltroNome));
+  // Só filtra por mês de vencimento quando um cartão específico está selecionado ("Ver
+  // compras") — mesmo critério do mesRef usado em getRazaoConfig, pra o gráfico bater com o
+  // total da fatura daquele mês (ex.: Itaú R$ 1.091,41 em outubro), em vez de somar compras
+  // de todos os meses do cartão.
+  const mesRef = razaoFiltroNome ? mesFiltroCartoesAtivo() : null;
+  const itens = data.lancamentos.filter(l => l.tipo === 'cartao'
+    && (!razaoFiltroNome || l.nome === razaoFiltroNome)
+    && (!mesRef || mesFaturaDaCompra(l) === mesRef));
   const porCategoria = {};
   itens.forEach(l => {
     const cat = l.categoria || 'Sem categoria';
