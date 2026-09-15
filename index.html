@@ -4328,7 +4328,7 @@ function renderOrcamento(){
     return `
       <div class="orc-cat-row">
         <div class="linha1">
-          <span>${cat}</span>
+          <span class="orc-cat-nome" onclick="abrirRazao('categoriaMes', '${catEscaped}')" title="Ver lançamentos desta categoria no mês" style="cursor:pointer; text-decoration:underline;">${cat}</span>
           <div style="display:flex; align-items:center; gap:4px;">
             <input type="number" step="0.01" min="0" value="${limite || ''}" placeholder="0,00" onchange="salvarOrcamentoCategoria('${catEscaped}', parseFloat(this.value)||0)" oninput="atualizarBarraOrcamentoCategoriaLive(this, '${catEscaped}')">
             <button type="button" class="row-icon-btn" onclick="excluirCategoriaOrcamento('${catEscaped}')" title="Excluir esta despesa do orçamento">x</button>
@@ -5032,6 +5032,12 @@ function getRazaoConfig(key){
     itens = data.lancamentos.filter(l=>(l.tipo==='receita'||l.tipo==='despesa') && itemInMonth(l, monthKey));
     titulo = 'Razão — Resultado de ' + monthLabel;
     total = itens.reduce((s,l)=> s + (l.tipo==='receita' ? Number(l.valor) : -Number(l.valor)), 0);
+  } else if(key === 'categoriaMes'){
+    // Mesmo critério do orçamento (gastoPorCategoriaNoMes): compras no cartão contam na
+    // categoria da compra; só o pagamento da fatura (categoria "Cartão de Crédito") fica de fora.
+    itens = data.lancamentos.filter(l => (l.tipo === 'cartao' || l.tipo === 'despesa') && l.categoria === razaoFiltroNome && itemInMonth(l, monthKey));
+    titulo = 'Razão — ' + razaoFiltroNome + ' (' + monthLabel + ')';
+    total = itens.reduce((s,l)=>s+Number(l.valor),0);
   }
 
   itens = itens.slice().sort((a,b)=> b.data.localeCompare(a.data));
