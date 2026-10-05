@@ -166,6 +166,15 @@
   .list-item:last-child{border-bottom:none;}
   .list-item .meta{color:var(--muted); font-size:0.76rem;}
   .list-item .actions{display:flex; gap:6px; flex-shrink:0; align-items:center; flex-wrap:wrap; justify-content:flex-end;}
+  /* Razão de Receitas/Despesas/Resultado do mês: alterna entre a lista e a visão por dia
+     (gráfico diário + lançamentos agrupados por data com o total de cada dia). */
+  .razao-modo-toggle{display:inline-flex; gap:6px;}
+  .razao-modo-toggle button.ativo{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .razao-diario-resumo{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:8px; font-size:0.78rem; color:var(--muted);}
+  .razao-diario-resumo strong{color:var(--text);}
+  tr.razao-dia-header td{background:var(--card2); font-weight:700; font-size:0.8rem; padding-top:8px; padding-bottom:8px;}
+  tr.razao-dia-header .dia-tot{float:right;}
+  tr.razao-dia-header.destacado td{outline:2px solid var(--blue); outline-offset:-2px;}
   .totals-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:6px; border-top:1px dashed var(--border); font-weight:700; font-size:0.92rem;}
 
   /* Cartões da Home: a fatura em aberto mais alta aparece em destaque (card com brilho azul e
@@ -1376,6 +1385,16 @@
       </button>
     </div>
     <div id="razaoResumoCartoes"></div>
+    <div id="razaoDiarioWrap" style="display:none; margin-bottom:12px;">
+      <div class="razao-modo-toggle">
+        <button type="button" class="secondary small" id="razaoModoLista" onclick="mudarModoRazao('lista')">Lista</button>
+        <button type="button" class="secondary small" id="razaoModoDia" onclick="mudarModoRazao('dia')">Por dia</button>
+      </div>
+      <div id="razaoDiarioConteudo" style="display:none;">
+        <div class="chart-box" style="height:200px; margin-top:10px;"><canvas id="chartRazaoDiario"></canvas></div>
+        <div class="razao-diario-resumo" id="razaoDiarioResumo"></div>
+      </div>
+    </div>
     <div id="razaoChartContainer" style="display:none; margin-bottom:16px;">
       <div class="hint" style="margin-bottom:6px;">Despesa por categoria no cartão</div>
       <div class="chart-box" style="height:220px;"><canvas id="chartRazaoCategoria"></canvas></div>
@@ -5089,11 +5108,20 @@ function renderRazaoContent(){
   const cfg = getRazaoConfig(razaoAtualKey);
   document.getElementById('razaoTitle').textContent = cfg.titulo;
   const body = document.getElementById('razaoBody');
+  const temVisaoDiaria = RAZAO_CHAVES_DIARIAS.includes(razaoAtualKey);
+  const porDia = temVisaoDiaria && razaoModo === 'dia';
   if(cfg.itens.length === 0){
     body.innerHTML = '<tr><td colspan="4" class="empty">Nenhum lançamento encontrado.</td></tr>';
+  } else if(porDia){
+    body.innerHTML = linhasRazaoPorDiaHtml(cfg.itens);
   } else {
     body.innerHTML = cfg.itens.map(linhaLancamentoHtml).join('');
   }
+  document.getElementById('razaoDiarioWrap').style.display = temVisaoDiaria ? 'block' : 'none';
+  document.getElementById('razaoModoLista').classList.toggle('ativo', !porDia);
+  document.getElementById('razaoModoDia').classList.toggle('ativo', porDia);
+  document.getElementById('razaoDiarioConteudo').style.display = porDia ? 'block' : 'none';
+  if(porDia) renderRazaoDiario(cfg.itens);
   document.getElementById('razaoTotalLabel').textContent = cfg.totalLabel;
   document.getElementById('razaoTotal').textContent = fmt(cfg.total);
 
@@ -5123,6 +5151,114 @@ function renderRazaoContent(){
     resumoEl.innerHTML = '';
     chartContainer.style.display = 'none';
   }
+}
+
+// ---------- Visão por dia (Razão de Receitas / Despesas / Resultado do mês) ----------
+// Ao tocar em Receitas, Despesas ou Resultado na Home, o Razão pode alternar entre a lista
+// normal e "Por dia": gráfico com o total de cada dia do mês e os lançamentos agrupados por
+// data, cada grupo com o total do dia — pra ver quanto entrou/saiu em cada dia.
+const RAZAO_CHAVES_DIARIAS = ['receitaMes', 'despesaMes', 'resultadoMes'];
+let razaoModo = 'lista';
+
+function mudarModoRazao(modo){
+  razaoModo = modo;
+  renderRazaoContent();
+}
+
+function valorComSinalRazao(l){
+  return l.tipo === 'receita' ? Number(l.valor) : -Number(l.valor);
+}
+
+function linhasRazaoPorDiaHtml(itens){
+  const grupos = {};
+  itens.forEach(l => { (grupos[l.data] = grupos[l.data] || []).push(l); });
+  return Object.keys(grupos).sort((a,b)=> b.localeCompare(a)).map(dia => {
+    const lista = grupos[dia];
+    let totalTexto;
+    if(razaoAtualKey === 'resultadoMes'){
+      const saldo = lista.reduce((s,l)=> s + valorComSinalRazao(l), 0);
+      totalTexto = `<span class="${saldo >= 0 ? 'pos' : 'neg'}">${fmt(saldo)}</span>`;
+    } else {
+      const tot = lista.reduce((s,l)=> s + Number(l.valor), 0);
+      totalTexto = `<span class="${razaoAtualKey === 'receitaMes' ? 'pos' : 'neg'}">${fmt(tot)}</span>`;
+    }
+    const diaSemana = new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', {weekday:'short'}).replace('.', '');
+    const qtd = lista.length + (lista.length === 1 ? ' lançamento' : ' lançamentos');
+    return `<tr class="razao-dia-header" id="razaoDia-${dia}">
+        <td colspan="4">${fmtDate(dia)} <span class="hint">(${diaSemana} • ${qtd})</span><span class="dia-tot blur-target">${totalTexto}</span></td>
+      </tr>` + lista.map(linhaLancamentoHtml).join('');
+  }).join('');
+}
+
+function renderRazaoDiario(itens){
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  const [ano, mes] = monthKey.split('-').map(Number);
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const receitas = new Array(diasNoMes).fill(0);
+  const despesas = new Array(diasNoMes).fill(0);
+  itens.forEach(l => {
+    const d = Number(l.data.slice(8,10)) - 1;
+    if(d < 0 || d >= diasNoMes) return;
+    if(l.tipo === 'receita') receitas[d] += Number(l.valor);
+    else despesas[d] += Number(l.valor);
+  });
+  const labels = Array.from({length: diasNoMes}, (_,i)=> String(i+1));
+  const datasets = [];
+  if(razaoAtualKey !== 'despesaMes') datasets.push({label:'Receita', data:receitas, backgroundColor:'#22c55e'});
+  if(razaoAtualKey !== 'receitaMes') datasets.push({label:'Despesa', data:despesas, backgroundColor:'#ef4444'});
+
+  // Resumo: média por dia (considera os dias do mês até hoje, se for o mês corrente) e o dia de maior movimento.
+  const hoje = new Date();
+  const mesCorrente = hoje.getFullYear() === ano && hoje.getMonth() + 1 === mes;
+  const diasDecorridos = mesCorrente ? hoje.getDate() : diasNoMes;
+  const resumoEl = document.getElementById('razaoDiarioResumo');
+  const partes = [];
+  const resumoSerie = (nome, serie) => {
+    const total = serie.reduce((a,b)=>a+b,0);
+    const diasComMov = serie.filter(v => v > 0).length;
+    let maior = -1;
+    serie.forEach((v,i)=>{ if(v > 0 && (maior < 0 || v > serie[maior])) maior = i; });
+    partes.push(`<span>${nome} — média por dia: <strong class="blur-target">${fmt(total / Math.max(1, diasDecorridos))}</strong></span>`);
+    partes.push(`<span>Dias com ${nome.toLowerCase()}: <strong>${diasComMov}</strong></span>`);
+    if(maior >= 0) partes.push(`<span>Maior dia: <strong>${String(maior+1).padStart(2,'0')}/${String(mes).padStart(2,'0')}</strong> (<span class="blur-target">${fmt(serie[maior])}</span>)</span>`);
+  };
+  if(razaoAtualKey !== 'despesaMes') resumoSerie('Receitas', receitas);
+  if(razaoAtualKey !== 'receitaMes') resumoSerie('Despesas', despesas);
+  resumoEl.innerHTML = partes.join('');
+
+  if(charts.razaoDiario) charts.razaoDiario.destroy();
+  const ctx = document.getElementById('chartRazaoDiario').getContext('2d');
+  charts.razaoDiario = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{ticks:{color:corGraficoMuted(), autoSkip:true, maxRotation:0, font:{size:10}}, grid:{display:false}},
+        y:{ticks:{color:corGraficoMuted(), font:{size:10}}, grid:{color:corGraficoGrade()}}
+      },
+      plugins:{
+        legend:{ display: datasets.length > 1, labels:{color:corGraficoTexto(), boxWidth:12, font:{size:11}} },
+        tooltip:{
+          callbacks:{
+            title: items => items.length ? `Dia ${String(Number(items[0].label)).padStart(2,'0')}/${String(mes).padStart(2,'0')}` : '',
+            label: c => `${c.dataset.label}: ${fmt(c.raw)}`
+          }
+        }
+      },
+      // Tocar numa barra leva até os lançamentos daquele dia na lista abaixo.
+      onClick: (evt, elementos) => {
+        if(!elementos.length) return;
+        const dia = `${monthKey}-${String(elementos[0].index + 1).padStart(2,'0')}`;
+        const linha = document.getElementById('razaoDia-' + dia);
+        if(!linha) return;
+        document.querySelectorAll('tr.razao-dia-header.destacado').forEach(el => el.classList.remove('destacado'));
+        linha.classList.add('destacado');
+        linha.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    }
+  });
 }
 
 function renderChartRazaoCartaoCategorias(){
