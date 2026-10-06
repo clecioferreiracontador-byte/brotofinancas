@@ -3557,7 +3557,7 @@ function pagarFatura(idx){
     descricao: 'Pagamento fatura - ' + cartao.nome,
     // vencimento guarda o mês da fatura sendo paga (não a data do pagamento), para o pagamento
     // abater o saldo em aberto dessa fatura mesmo se pago em outro mês (ver cartoesAgrupados).
-    limite: null, vencimento: vencPagamento, parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
+    limite: null, vencimento: cartao.vencimento || (mesRef + '-01'), parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
   });
 
   saveData();
