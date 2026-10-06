@@ -3557,7 +3557,7 @@ function pagarFatura(idx){
     descricao: 'Pagamento fatura - ' + cartao.nome,
     // vencimento guarda o mês da fatura sendo paga (não a data do pagamento), para o pagamento
     // abater o saldo em aberto dessa fatura mesmo se pago em outro mês (ver cartoesAgrupados).
-    limite: null, vencimento: cartao.vencimento || (mesRef + '-01'), parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
+    limite: null, vencimento: vencPagamento, parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
   });
 
   saveData();
@@ -3592,6 +3592,15 @@ function gastoPorCategoriaNoMes(monthKey){
     porCat[cat] = (porCat[cat] || 0) + Number(l.valor);
   });
   return porCat;
+}
+
+// Gasto total do orçamento: soma só as despesas que estão na lista do orçamento por
+// categoria — as que a pessoa excluiu (botão "x") ficam de fora do Gasto/Restante.
+function gastoTotalOrcamento(gastoPorCat){
+  const excluidas = data.orcamentoCategoriasExcluidas || [];
+  return Object.entries(gastoPorCat)
+    .filter(([cat]) => !excluidas.includes(cat))
+    .reduce((s,[,v]) => s + v, 0);
 }
 
 // ---------- Relatório do mês (menu de 3 pontos): resumo de um mês ou de vários meses
@@ -3690,7 +3699,7 @@ function coletarDadosRelatorio(dataInicio, dataFim){
   let gastoOrcamento = 0;
   meses.forEach(mk => {
     orcamentoTotal += Number(getOrcamentoMes(mk).total) || 0;
-    gastoOrcamento += Object.values(gastoPorCategoriaNoMes(mk)).reduce((s,v) => s + v, 0);
+    gastoOrcamento += gastoTotalOrcamento(gastoPorCategoriaNoMes(mk));
   });
 
   return {
@@ -3946,7 +3955,7 @@ function calcularAlertas(){
         alertas.push({ texto: `Orçamento de ${cat} ultrapassado (${pct}%) — ${fmt(gasto)} de ${fmt(limite)}`, urgente: true });
       }
     });
-    const gastoTotal = Object.values(gastoPorCat).reduce((s,v) => s + v, 0);
+    const gastoTotal = gastoTotalOrcamento(gastoPorCat);
     if(orc.total > 0 && gastoTotal > orc.total){
       alertas.push({ texto: `Orçamento total do mês ultrapassado — ${fmt(gastoTotal)} de ${fmt(orc.total)}`, urgente: true });
     }
@@ -4257,7 +4266,7 @@ function atualizarBarraOrcamentoTotalLive(valorStr){
   const monthKey = currentMonthKey();
   if(!monthKey) return;
   const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
-  const gastoTotal = Object.values(gastoPorCat).reduce((s,v)=>s+v,0);
+  const gastoTotal = gastoTotalOrcamento(gastoPorCat);
   const restante = total - gastoTotal;
   const pctRealTotal = total ? (gastoTotal / total) * 100 : 0;
   const pct = Math.min(100, pctRealTotal);
@@ -4315,7 +4324,7 @@ function renderOrcamento(){
   if(!monthKey) return;
   const orc = getOrcamentoMes(monthKey);
   const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
-  const gastoTotal = Object.values(gastoPorCat).reduce((s,v)=>s+v,0);
+  const gastoTotal = gastoTotalOrcamento(gastoPorCat);
 
   document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
   document.getElementById('orcamentoTotalInput').value = orc.total || '';
