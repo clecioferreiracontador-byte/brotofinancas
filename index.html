@@ -3504,13 +3504,25 @@ function cartoesAgrupados(mesFiltro){
     const mesCompraRef = bucketComVenc || (maisRecenteCompra
       ? maisRecenteCompra.data.slice(0,7)
       : (mesFiltro ? subOneMonthFromKey(mesFiltro) : currentMonthKey()));
+    // Com filtro de mês, o vencimento mostrado (e usado no pagamento) tem que cair no próprio
+    // mês da fatura. O vencimento guardado para o mês da compra pode ser um valor antigo "preso"
+    // no mesmo mês da compra (ex.: importação do PDF grava a chave pelo mês do vencimento), que
+    // mesFaturaDaCompra ignora — usá-lo aqui jogava o pagamento na fatura do mês anterior e a
+    // fatura atual continuava em aberto mesmo depois de paga.
+    let vencimento = vencimentoCartaoParaMes(nome, mesCompraRef);
+    if(mesFiltro){
+      const candidatos = [vencimento, vencimentosDoNome[mesFiltro]]
+        .concat([...new Set(comprasDoNome.map(l => l.data.slice(0,7)))].map(mk => vencimentoCartaoParaMes(nome, mk)))
+        .concat(comprasDoNome.map(l => l.vencimento));
+      vencimento = candidatos.find(v => v && v.slice(0,7) === mesFiltro) || null;
+    }
     return {
       nome,
       total: saldoAberto,
       totalComprado,
       totalPago,
       limite: maisRecenteCompra ? maisRecenteCompra.limite : null,
-      vencimento: vencimentoCartaoParaMes(nome, mesCompraRef),
+      vencimento,
       mesCompraRef,
       dataUltimoLancamento: maisRecenteCompra ? maisRecenteCompra.data : (maisRecentePagamento ? maisRecentePagamento.data : null),
       latestId: maisRecenteCompra ? maisRecenteCompra.id : null,
@@ -3547,6 +3559,11 @@ function pagarFatura(idx){
     alert('Esse cartão não tem fatura em aberto para pagar.');
     return;
   }
+  // O pagamento é vinculado à fatura que está sendo exibida (mês de vencimento em mesFiltro);
+  // um vencimento de outro mês faria o pagamento abater a fatura errada.
+  const vencPagamento = mesFiltro
+    ? ((cartao.vencimento && cartao.vencimento.slice(0,7) === mesFiltro) ? cartao.vencimento : mesFiltro + '-01')
+    : (cartao.vencimento || (mesRef + '-01'));
   const sugestao = cartao.total;
   const entrada = prompt('Valor pago agora na fatura do cartão "' + cartao.nome + '" (saldo em aberto: ' + fmt(cartao.total) + '):', sugestao.toFixed(2));
   if(entrada === null) return;
@@ -3562,7 +3579,7 @@ function pagarFatura(idx){
     descricao: 'Pagamento fatura - ' + cartao.nome,
     // vencimento guarda o mês da fatura sendo paga (não a data do pagamento), para o pagamento
     // abater o saldo em aberto dessa fatura mesmo se pago em outro mês (ver cartoesAgrupados).
-    limite: null, vencimento: cartao.vencimento || (mesRef + '-01'), parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
+    limite: null, vencimento: vencPagamento, parcelas: null, tipoInvestimento: null, nome: cartao.nome, forma: 'Banco'
   });
 
   saveData();
