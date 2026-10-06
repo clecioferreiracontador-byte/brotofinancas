@@ -934,8 +934,8 @@
     <div class="hint" id="orcamentoMesLabel" style="margin-bottom:12px;"></div>
     <div class="orc-total-box">
       <div class="field" style="margin-bottom:0;">
-        <label>Orçamento total do mês (R$)</label>
-        <input type="number" step="0.01" min="0" id="orcamentoTotalInput" placeholder="0,00" onchange="salvarOrcamentoTotal(parseFloat(this.value)||0)" oninput="atualizarBarraOrcamentoTotalLive(this.value)">
+        <label>Orçamento total do mês (R$) — soma automática das despesas abaixo</label>
+        <input type="number" step="0.01" id="orcamentoTotalInput" placeholder="0,00" readonly tabindex="-1" title="Calculado automaticamente pela soma do orçamento por categoria">
       </div>
       <div class="orc-bar-wrap"><div class="orc-bar" id="orcamentoTotalBar" style="width:0%;"></div></div>
       <div class="hint" style="display:flex; justify-content:space-between; margin-top:6px;">
@@ -3608,6 +3608,17 @@ function gastoTotalOrcamento(gastoPorCat){
     .reduce((s,[,v]) => s + v, 0);
 }
 
+// Orçamento total do mês: soma automática dos valores do orçamento por categoria (menos as
+// excluídas). Meses antigos, em que só o total foi digitado à mão, continuam usando esse total.
+function orcamentoTotalMes(monthKey){
+  const orc = getOrcamentoMes(monthKey);
+  const excluidas = data.orcamentoCategoriasExcluidas || [];
+  const soma = Object.entries(orc.categorias)
+    .filter(([cat]) => cat !== 'Cartão de Crédito' && !excluidas.includes(cat))
+    .reduce((s,[,v]) => s + (Number(v) || 0), 0);
+  return soma > 0 ? soma : (Number(orc.total) || 0);
+}
+
 // ---------- Relatório do mês (menu de 3 pontos): resumo de um mês ou de vários meses
 // acumulados, exportado em PDF ou Excel. ----------
 function abrirRelatorioMensal(){
@@ -3703,7 +3714,7 @@ function coletarDadosRelatorio(dataInicio, dataFim){
   let orcamentoTotal = 0;
   let gastoOrcamento = 0;
   meses.forEach(mk => {
-    orcamentoTotal += Number(getOrcamentoMes(mk).total) || 0;
+    orcamentoTotal += orcamentoTotalMes(mk);
     gastoOrcamento += gastoTotalOrcamento(gastoPorCategoriaNoMes(mk));
   });
 
@@ -3961,8 +3972,9 @@ function calcularAlertas(){
       }
     });
     const gastoTotal = gastoTotalOrcamento(gastoPorCat);
-    if(orc.total > 0 && gastoTotal > orc.total){
-      alertas.push({ texto: `Orçamento total do mês ultrapassado — ${fmt(gastoTotal)} de ${fmt(orc.total)}`, urgente: true });
+    const totalOrc = orcamentoTotalMes(monthKey);
+    if(totalOrc > 0 && gastoTotal > totalOrc){
+      alertas.push({ texto: `Orçamento total do mês ultrapassado — ${fmt(gastoTotal)} de ${fmt(totalOrc)}`, urgente: true });
     }
   }
 
@@ -4240,14 +4252,6 @@ function renderScoreFinanceiroDetalhe(){
   resultadoEl.className = 'blur-target score-stat-valor ' + (r.resultado >= 0 ? 'pos' : 'neg');
 }
 
-function salvarOrcamentoTotal(valor){
-  const monthKey = currentMonthKey();
-  const orc = getOrcamentoMes(monthKey);
-  orc.total = valor || 0;
-  saveData();
-  renderOrcamento();
-}
-
 function salvarOrcamentoCategoria(categoria, valor){
   const monthKey = currentMonthKey();
   const orc = getOrcamentoMes(monthKey);
@@ -4266,12 +4270,11 @@ function textoPctOrcamento(pctReal, limiteDefinido){
   return pctReal.toFixed(0) + '%' + (pctReal > 100 ? ' (excedeu)' : '');
 }
 
-function atualizarBarraOrcamentoTotalLive(valorStr){
-  const total = parseFloat(valorStr) || 0;
-  const monthKey = currentMonthKey();
-  if(!monthKey) return;
-  const gastoPorCat = gastoPorCategoriaNoMes(monthKey);
-  const gastoTotal = gastoTotalOrcamento(gastoPorCat);
+// Atualiza o quadro do orçamento total (valor, gasto, restante, barra e %) com o total já
+// calculado — chamado ao renderizar e enquanto a pessoa digita o valor de uma categoria.
+function atualizarResumoOrcamentoTotal(total, gastoTotal){
+  document.getElementById('orcamentoTotalInput').value = total ? total.toFixed(2) : '';
+  document.getElementById('orcamentoTotalGasto').textContent = fmt(gastoTotal);
   const restante = total - gastoTotal;
   const pctRealTotal = total ? (gastoTotal / total) * 100 : 0;
   const pct = Math.min(100, pctRealTotal);
@@ -4284,6 +4287,17 @@ function atualizarBarraOrcamentoTotalLive(valorStr){
   const pctEl = document.getElementById('orcamentoTotalPct');
   pctEl.textContent = textoPctOrcamento(pctRealTotal, total > 0);
   pctEl.classList.toggle('neg', pctRealTotal > 100);
+}
+
+// Total do mês como se a categoria tivesse o valor ainda sendo digitado (não salvo).
+function orcamentoTotalComValor(monthKey, categoria, valor){
+  const orc = getOrcamentoMes(monthKey);
+  const tinha = Object.prototype.hasOwnProperty.call(orc.categorias, categoria);
+  const antigo = orc.categorias[categoria];
+  orc.categorias[categoria] = valor;
+  const total = orcamentoTotalMes(monthKey);
+  if(tinha) orc.categorias[categoria] = antigo; else delete orc.categorias[categoria];
+  return total;
 }
 
 function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
@@ -4308,6 +4322,7 @@ function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
     spans[1].textContent = textoPctOrcamento(pctReal, limite > 0);
     spans[1].classList.toggle('neg', ultrapassou);
   }
+  atualizarResumoOrcamentoTotal(orcamentoTotalComValor(monthKey, categoria, limite), gastoTotalOrcamento(gastoPorCat));
 }
 
 function corBarraOrcamento(pct){
@@ -4332,20 +4347,7 @@ function renderOrcamento(){
   const gastoTotal = gastoTotalOrcamento(gastoPorCat);
 
   document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
-  document.getElementById('orcamentoTotalInput').value = orc.total || '';
-  const pctTotalReal = orc.total ? (gastoTotal / orc.total) * 100 : 0;
-  const pctTotal = Math.min(100, pctTotalReal);
-  const restanteTotal = (orc.total || 0) - gastoTotal;
-  document.getElementById('orcamentoTotalGasto').textContent = fmt(gastoTotal);
-  const restanteEl = document.getElementById('orcamentoTotalRestante');
-  restanteEl.textContent = restanteTotal >= 0 ? fmt(restanteTotal) : ('Excedido em ' + fmt(Math.abs(restanteTotal)));
-  restanteEl.classList.toggle('neg', restanteTotal < 0);
-  const barTotal = document.getElementById('orcamentoTotalBar');
-  barTotal.style.width = pctTotal + '%';
-  barTotal.style.background = corBarraOrcamento(pctTotal);
-  const pctTotalEl = document.getElementById('orcamentoTotalPct');
-  pctTotalEl.textContent = textoPctOrcamento(pctTotalReal, orc.total > 0);
-  pctTotalEl.classList.toggle('neg', pctTotalReal > 100);
+  atualizarResumoOrcamentoTotal(orcamentoTotalMes(monthKey), gastoTotal);
 
   const todasCategorias = categoriasVisiveisOrcamento(gastoPorCat);
   const list = document.getElementById('orcamentoCategoriasList');
