@@ -946,7 +946,12 @@
     </div>
     <div class="hint" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;">
       <span>Orçamento por categoria (despesas e compras no cartão do mês)</span>
-      <button type="button" class="secondary iconbtn" onclick="incluirCategoriaOrcamento()" title="Incluir de volta uma despesa excluída do orçamento">+</button>
+      <button type="button" class="secondary iconbtn" onclick="incluirCategoriaOrcamento()" title="Incluir uma despesa no orçamento">+</button>
+    </div>
+    <div id="orcamentoIncluirBox" style="display:none; gap:6px; align-items:center; margin-bottom:10px;">
+      <select id="orcamentoIncluirSelect" style="flex:1; min-width:0;"></select>
+      <button type="button" class="small" onclick="confirmarIncluirCategoriaOrcamento()">Incluir</button>
+      <button type="button" class="secondary small" onclick="fecharIncluirCategoriaOrcamento()">Cancelar</button>
     </div>
     <div id="orcamentoCategoriasList"></div>
   </div>
@@ -4342,9 +4347,7 @@ function renderOrcamento(){
   pctTotalEl.textContent = textoPctOrcamento(pctTotalReal, orc.total > 0);
   pctTotalEl.classList.toggle('neg', pctTotalReal > 100);
 
-  const excluidas = data.orcamentoCategoriasExcluidas || [];
-  const todasCategorias = [...new Set(CATEGORIAS_DESPESA.concat(data.categoriasDespesa||[]).concat(Object.keys(gastoPorCat)))]
-    .filter(cat => cat !== 'Cartão de Crédito' && !excluidas.includes(cat));
+  const todasCategorias = categoriasVisiveisOrcamento(gastoPorCat);
   const list = document.getElementById('orcamentoCategoriasList');
   list.innerHTML = todasCategorias.map(cat => {
     const limite = orc.categorias[cat] || 0;
@@ -4382,21 +4385,57 @@ function excluirCategoriaOrcamento(categoria){
   }
 }
 
-function incluirCategoriaOrcamento(){
+// Categorias que aparecem no orçamento por categoria do mês: as padrão, as criadas pela pessoa,
+// as com gasto no mês e as incluídas à mão pelo "+" — menos as excluídas (botão "x").
+function categoriasVisiveisOrcamento(gastoPorCat){
   const excluidas = data.orcamentoCategoriasExcluidas || [];
-  if(excluidas.length === 0){
-    alert('Não há despesas excluídas do orçamento no momento.');
+  return [...new Set(listaCategoriasParaTipo('despesa')
+      .concat(data.orcamentoCategoriasIncluidas || [])
+      .concat(Object.keys(gastoPorCat)))]
+    .filter(cat => cat !== 'Cartão de Crédito' && !excluidas.includes(cat));
+}
+
+// Toda a relação de despesas do app: categorias padrão e criadas, as usadas em lançamentos
+// de despesa/cartão (de qualquer mês) e em provisões, e as que já foram excluídas do orçamento.
+function todasCategoriasDespesa(){
+  const doLancamento = (data.lancamentos || [])
+    .filter(l => l.tipo === 'despesa' || l.tipo === 'cartao').map(l => l.categoria);
+  const daProvisao = (data.provisoes || [])
+    .filter(p => p.tipo === 'despesa' || p.tipo === 'cartao').map(p => p.categoria);
+  return [...new Set(listaCategoriasParaTipo('despesa')
+      .concat(doLancamento, daProvisao, data.orcamentoCategoriasExcluidas || []))]
+    .filter(cat => cat && cat !== 'Cartão de Crédito');
+}
+
+function incluirCategoriaOrcamento(){
+  const box = document.getElementById('orcamentoIncluirBox');
+  if(box.style.display === 'flex'){ fecharIncluirCategoriaOrcamento(); return; }
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  const visiveis = categoriasVisiveisOrcamento(gastoPorCategoriaNoMes(monthKey));
+  const disponiveis = todasCategoriasDespesa().filter(c => !visiveis.includes(c))
+    .sort((a,b) => a.localeCompare(b, 'pt-BR'));
+  if(disponiveis.length === 0){
+    alert('Todas as despesas já estão no orçamento.');
     return;
   }
-  const escolha = prompt('Qual despesa deseja voltar a incluir no orçamento?\n\n' + excluidas.map((c,i)=>(i+1)+'. '+c).join('\n') + '\n\nDigite o nome exatamente como aparece acima:');
-  if(escolha === null) return;
-  const nomeTrim = escolha.trim();
-  if(!excluidas.includes(nomeTrim)){
-    alert('Essa despesa não está na lista de excluídas.');
-    return;
-  }
-  data.orcamentoCategoriasExcluidas = excluidas.filter(c => c !== nomeTrim);
+  document.getElementById('orcamentoIncluirSelect').innerHTML =
+    disponiveis.map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
+  box.style.display = 'flex';
+}
+
+function fecharIncluirCategoriaOrcamento(){
+  document.getElementById('orcamentoIncluirBox').style.display = 'none';
+}
+
+function confirmarIncluirCategoriaOrcamento(){
+  const cat = document.getElementById('orcamentoIncluirSelect').value;
+  if(!cat) return;
+  data.orcamentoCategoriasExcluidas = (data.orcamentoCategoriasExcluidas || []).filter(c => c !== cat);
+  if(!data.orcamentoCategoriasIncluidas) data.orcamentoCategoriasIncluidas = [];
+  if(!data.orcamentoCategoriasIncluidas.includes(cat)) data.orcamentoCategoriasIncluidas.push(cat);
   saveData();
+  fecharIncluirCategoriaOrcamento();
   renderOrcamento();
 }
 
