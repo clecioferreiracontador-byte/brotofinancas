@@ -4287,6 +4287,12 @@ function textoPctOrcamento(pctReal, limiteDefinido){
   return pctReal.toFixed(0) + '%' + (pctReal > 100 ? ' (excedeu)' : '');
 }
 
+// Restante de uma categoria (ou "Excedido em ..." quando passou do limite).
+function textoRestanteCategoria(limite, gasto){
+  const restante = limite - gasto;
+  return 'Restante ' + (restante >= 0 ? fmt(restante) : ('Excedido em ' + fmt(Math.abs(restante))));
+}
+
 // Atualiza o quadro do orçamento total (valor, gasto, restante, barra e %) com o total já
 // calculado — chamado ao renderizar e enquanto a pessoa digita o valor de uma categoria.
 function atualizarResumoOrcamentoTotal(total, gastoTotal){
@@ -4336,8 +4342,12 @@ function atualizarBarraOrcamentoCategoriaLive(inputEl, categoria){
     spans[0].classList.toggle('neg', ultrapassou);
   }
   if(spans[1]){
-    spans[1].textContent = textoPctOrcamento(pctReal, limite > 0);
+    spans[1].textContent = textoRestanteCategoria(limite, gasto);
     spans[1].classList.toggle('neg', ultrapassou);
+  }
+  if(spans[2]){
+    spans[2].textContent = textoPctOrcamento(pctReal, limite > 0);
+    spans[2].classList.toggle('neg', ultrapassou);
   }
   atualizarResumoOrcamentoTotal(orcamentoTotalComValor(monthKey, categoria, limite), gastoTotalOrcamento(gastoPorCat));
 }
@@ -4387,6 +4397,7 @@ function renderOrcamento(){
         <div class="orc-bar-wrap"><div class="orc-bar" style="width:${pct}%; background:${corBarraOrcamento(pct)};"></div></div>
         <div class="hint" style="display:flex; justify-content:space-between; margin-top:2px;">
           <span class="${ultrapassou ? 'neg' : ''}">Gasto ${fmt(gasto)}</span>
+          <span class="blur-target ${ultrapassou ? 'neg' : ''}">${textoRestanteCategoria(limite, gasto)}</span>
           <span class="${ultrapassou ? 'neg' : ''}">${textoPctOrcamento(pctReal, limite > 0)}</span>
         </div>
       </div>
