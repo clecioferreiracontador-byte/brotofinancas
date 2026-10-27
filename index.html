@@ -3949,13 +3949,20 @@ function textoVencimento(dias, rotulo, dataVencimento){
 function calcularAlertas(){
   const alertas = [];
 
-  cartoesAgrupados().forEach(c => {
-    if(c.total > 0 && c.vencimento){
-      const dias = diasAteData(c.vencimento);
-      if(dias <= NOTIF_DIAS_ANTECEDENCIA){
-        alertas.push({ texto: `${textoVencimento(dias, 'Fatura', c.vencimento)} — ${c.nome} (${fmt(c.total)})`, urgente: dias < 0 });
+  // Avalia cada fatura (mês de vencimento) separadamente: sem filtro, o saldo de todas as faturas
+  // do cartão era somado e uma fatura já paga continuava alertando enquanto outra estivesse aberta.
+  const mesesFatura = [...new Set(
+    data.lancamentos.filter(l => l.tipo === 'cartao').map(l => mesFaturaDaCompra(l))
+  )].filter(Boolean);
+  mesesFatura.forEach(mes => {
+    cartoesAgrupados(mes).forEach(c => {
+      if(c.total > 0 && c.vencimento){
+        const dias = diasAteData(c.vencimento);
+        if(dias <= NOTIF_DIAS_ANTECEDENCIA){
+          alertas.push({ texto: `${textoVencimento(dias, 'Fatura', c.vencimento)} — ${c.nome} (${fmt(c.total)})`, urgente: dias < 0 });
+        }
       }
-    }
+    });
   });
 
   data.lancamentos.filter(l => l.tipo === 'divida' && Number(l.parcelas) > 0 && l.vencimento).forEach(l => {
