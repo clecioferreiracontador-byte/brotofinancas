@@ -5778,6 +5778,24 @@ function pokerOpcoesGrafico(extra){
   };
   return Object.assign(o, extra || {});
 }
+// Bandeirinhas douradas sobre os pontos (índices do dataset) dos maiores ganhos.
+function pokerPluginBandeiras(indices){
+  return {
+    id: 'pokerBandeiras',
+    afterDatasetsDraw(chart){
+      const ctx = chart.ctx, meta = chart.getDatasetMeta(0);
+      indices.forEach(k => {
+        const p = meta.data[k];
+        if(!p) return;
+        ctx.save();
+        ctx.strokeStyle = '#d4a017'; ctx.fillStyle = '#eab308'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 22); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - 22); ctx.lineTo(p.x + 11, p.y - 18); ctx.lineTo(p.x, p.y - 14); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      });
+    }
+  };
+}
 function pokerDestruir(nome){ if(charts[nome]){ charts[nome].destroy(); charts[nome] = null; } }
 
 function renderPoker(){
@@ -5815,24 +5833,50 @@ function renderPokerPainel(){
   elMes.textContent = fmt(lucroMes); elMes.style.color = pokerCorLucro(lucroMes);
   document.getElementById('pokerRoiCaixa').textContent = pokerRoiTexto(lucroTotal, despesas);
 
-  // Evolução acumulada (bankroll). O saldo antes do período escolhido entra como ponto de partida.
-  let acumulado = desde ? todos.filter(l => l.data.slice(0,7) < desde).reduce((s,l) => s + sinal(l), 0) : 0;
-  const porDia = {};
-  itens.forEach(l => { porDia[l.data] = (porDia[l.data] || 0) + sinal(l); });
-  const dias = Object.keys(porDia).sort();
-  const pontos = dias.map(d => { acumulado += porDia[d]; return Math.round(acumulado * 100) / 100; });
+  // Evolução acumulada (bankroll), um ponto por lançamento de poker; o eixo X é só a contagem
+  // (sem datas). O saldo anterior ao período escolhido entra como ponto de partida.
+  const inicio = desde ? todos.filter(l => l.data.slice(0,7) < desde).reduce((s,l) => s + sinal(l), 0) : 0;
+  let acumulado = inicio;
+  const pontos = [{x:0, y:Math.round(inicio*100)/100}].concat(itens.map((l,i) => {
+    acumulado += sinal(l); return {x:i+1, y:Math.round(acumulado*100)/100};
+  }));
+
+  // Bandeiras nos 5 maiores ganhos (receitas de poker) dentro do período mostrado.
+  const indicesBandeira = itens.map((l,i) => ({i:i+1, v:l.tipo === 'receita' ? Number(l.valor) : 0}))
+    .filter(o => o.v > 0).sort((a,b) => b.v - a.v).slice(0,5).map(o => o.i);
 
   pokerDestruir('pokerBankroll');
   charts.pokerBankroll = new Chart(document.getElementById('chartPokerBankroll').getContext('2d'), {
     type:'line',
-    data:{ labels: dias.map(fmtDate), datasets:[{
-      label:'Lucro acumulado', data: pontos, borderColor:'#22c55e',
+    data:{ datasets:[{
+      label:'Lucro acumulado', data: pontos, borderColor:'#22c55e', borderWidth:1.5, tension:0, pointRadius:0, pointHoverRadius:4,
       segment:{ borderColor: c => ((c.p0.parsed.y + c.p1.parsed.y) / 2 >= 0 ? '#22c55e' : '#ef4444') },
       fill:{ target:'origin', above:'rgba(34,197,94,0.15)', below:'rgba(239,68,68,0.2)' },
-      tension:0.25, cubicInterpolationMode:'monotone', pointRadius: dias.length > 40 ? 0 : 3,
-      pointBackgroundColor: c => (c.raw >= 0 ? '#22c55e' : '#ef4444'), pointBorderColor: c => (c.raw >= 0 ? '#22c55e' : '#ef4444')
+      pointHoverBackgroundColor: c => (c.raw && c.raw.y >= 0 ? '#22c55e' : '#ef4444')
     }]},
-    options: pokerOpcoesGrafico()
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ top:26 } },
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        x:{ type:'linear', min:0, max:Math.max(itens.length, 1), title:{display:true, text:'Jogos', color:corGraficoMuted()},
+            ticks:{color:corGraficoMuted(), precision:0}, grid:{color:corGraficoGrade()} },
+        y:{ ticks:{color:corGraficoMuted(), callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR')}, grid:{color:corGraficoGrade()} }
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{
+          title: items => items[0].parsed.x === 0 ? 'Início' : 'Jogo ' + items[0].parsed.x,
+          label: c => {
+            const l = itens[c.parsed.x - 1];
+            const linhas = ['Lucro total: ' + fmt(c.parsed.y)];
+            if(l) linhas.push((l.tipo === 'receita' ? 'Ganho: ' : 'Custo: ') + fmt(l.valor), l.descricao || '');
+            return linhas.filter(Boolean);
+          }
+        } }
+      }
+    },
+    plugins:[pokerPluginBandeiras(indicesBandeira)]
   });
 }
 
@@ -5971,21 +6015,7 @@ function renderPokerTorneios(){
     .filter(o => o.premio > 0).sort((a,b) => b.premio - a.premio).slice(0,5)
     .forEach(o => { bandeiras[o.i] = true; });
   const VERDE = '#22c55e', VERMELHO = '#ef4444';
-  const pluginBandeiras = {
-    id: 'pokerBandeiras',
-    afterDatasetsDraw(chart){
-      const ctx = chart.ctx, meta = chart.getDatasetMeta(0);
-      Object.keys(bandeiras).forEach(k => {
-        const p = meta.data[Number(k)];
-        if(!p) return;
-        ctx.save();
-        ctx.strokeStyle = '#d4a017'; ctx.fillStyle = '#eab308'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 22); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(p.x, p.y - 22); ctx.lineTo(p.x + 11, p.y - 18); ctx.lineTo(p.x, p.y - 14); ctx.closePath(); ctx.fill();
-        ctx.restore();
-      });
-    }
-  };
+  const pluginBandeiras = pokerPluginBandeiras(Object.keys(bandeiras).map(Number));
   pokerDestruir('pokerTorneios');
   charts.pokerTorneios = new Chart(document.getElementById('chartPokerTorneios').getContext('2d'), {
     type:'line',
