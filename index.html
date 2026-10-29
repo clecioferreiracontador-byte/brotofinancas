@@ -5955,16 +5955,64 @@ function renderPokerTorneios(){
   document.getElementById('pkKMelhor').textContent = melhor > 0 ? fmt(melhor) : '--';
   document.getElementById('pkKSeq').textContent = lista.length ? seq + (seq === 1 ? ' torneio' : ' torneios') : '--';
 
+  // Eixo X = número do jogo (0 = ponto de partida). Linha vermelha enquanto o acumulado está
+  // negativo e verde quando passa de zero; bandeiras marcam os maiores prêmios.
   let acum = 0;
-  const pontos = lista.map(t => { acum += pokerLucro(t); return Math.round(acum*100)/100; });
+  const pontos = [{x:0, y:0}].concat(lista.map((t,i) => { acum += pokerLucro(t); return {x:i+1, y:Math.round(acum*100)/100}; }));
+  const bandeiras = {};
+  lista.map((t,i) => ({i:i+1, premio:Number(t.premio || 0)}))
+    .filter(o => o.premio > 0).sort((a,b) => b.premio - a.premio).slice(0,5)
+    .forEach(o => { bandeiras[o.i] = true; });
+  const VERDE = '#22c55e', VERMELHO = '#ef4444';
+  const pluginBandeiras = {
+    id: 'pokerBandeiras',
+    afterDatasetsDraw(chart){
+      const ctx = chart.ctx, meta = chart.getDatasetMeta(0);
+      Object.keys(bandeiras).forEach(k => {
+        const p = meta.data[Number(k)];
+        if(!p) return;
+        ctx.save();
+        ctx.strokeStyle = '#d4a017'; ctx.fillStyle = '#eab308'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - 22); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - 22); ctx.lineTo(p.x + 11, p.y - 18); ctx.lineTo(p.x, p.y - 14); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      });
+    }
+  };
   pokerDestruir('pokerTorneios');
   charts.pokerTorneios = new Chart(document.getElementById('chartPokerTorneios').getContext('2d'), {
     type:'line',
-    data:{ labels: lista.map((t,i) => (i+1) + ' • ' + fmtDate(t.data).slice(0,5)), datasets:[{
-      label:'Lucro acumulado', data: pontos, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.15)',
-      fill:true, tension:0.2, cubicInterpolationMode:'monotone', pointRadius: lista.length > 40 ? 0 : 3
+    data:{ datasets:[{
+      label:'Lucro acumulado', data: pontos, borderWidth:1.5, tension:0, pointRadius:0, pointHoverRadius:4,
+      borderColor: VERDE,
+      segment:{ borderColor: c => ((c.p0.parsed.y + c.p1.parsed.y) / 2 >= 0 ? VERDE : VERMELHO) },
+      fill:{ target:'origin', above:'rgba(34,197,94,0.15)', below:'rgba(239,68,68,0.2)' },
+      pointHoverBackgroundColor: c => (c.raw && c.raw.y >= 0 ? VERDE : VERMELHO)
     }]},
-    options: pokerOpcoesGrafico({ plugins:{ legend:{display:false}, title:{display:true, text:'Lucro acumulado por torneio', color:corGraficoTexto()} } })
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      layout:{ padding:{ top:26 } },
+      interaction:{ mode:'index', intersect:false },
+      scales:{
+        x:{ type:'linear', min:0, max:Math.max(lista.length, 1), title:{display:true, text:'Jogos', color:corGraficoMuted()},
+            ticks:{color:corGraficoMuted(), precision:0}, grid:{color:corGraficoGrade()} },
+        y:{ title:{display:true, text:'Lucro total (R$)', color:corGraficoMuted()},
+            ticks:{color:corGraficoMuted(), callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR')}, grid:{color:corGraficoGrade()} }
+      },
+      plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{
+          title: items => items[0].parsed.x === 0 ? 'Início' : 'Jogo ' + items[0].parsed.x,
+          label: c => {
+            const t = lista[c.parsed.x - 1];
+            const linhas = ['Lucro total: ' + fmt(c.parsed.y)];
+            if(t) linhas.push(t.nome + (t.site ? ' (' + t.site + ')' : ''), 'Resultado: ' + fmt(pokerLucro(t)));
+            return linhas;
+          }
+        } }
+      }
+    },
+    plugins:[pluginBandeiras]
   });
 
   const barras = (nomeChart, canvasId, grupos) => {
