@@ -120,6 +120,13 @@
   /* Safari/iOS ignora width:100% em input[type=date|month] e mantém a largura intrínseca,
      fazendo o conteúdo (ícone do calendário) ficar desalinhado/cortado na lateral direita. */
   input[type="date"], input[type="month"]{ -webkit-min-logical-width:100%; }
+  /* Data do torneio: o Safari/iOS usa largura própria no campo de data e o retângulo escapa do
+     quadro. Tira a aparência nativa e prende a largura ao quadro, centralizado. */
+  #pkData{ -webkit-appearance:none; appearance:none; display:block; box-sizing:border-box;
+    width:100%; max-width:100%; min-width:0; margin:0 auto; text-align:left;
+    -webkit-min-logical-width:calc(100% - 0px); }
+  #pkData::-webkit-date-and-time-value{ text-align:left; margin:0; min-height:1.2em; }
+  #pokerForm .field{ min-width:0; max-width:100%; }
   #fieldData input{ width:150px; max-width:150px; -webkit-min-logical-width:150px; }
   input:focus, select:focus{outline:1px solid var(--blue);}
   button{
