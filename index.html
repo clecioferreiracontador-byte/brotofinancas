@@ -3190,11 +3190,14 @@ function listaCategoriasParaTipo(tipo){
   return base.concat(extras.filter(c => !base.includes(c)));
 }
 
-function populateCategoriaSelect(){
+function populateCategoriaSelect(categoriaExtra){
   const tipo = document.getElementById('lancTipo').value;
   const sel = document.getElementById('lancCategoria');
-  const lista = listaCategoriasParaTipo(tipo);
-  const valorAtual = sel.value;
+  const lista = listaCategoriasParaTipo(tipo).slice();
+  // Ao editar, a categoria do lançamento precisa aparecer mesmo que não esteja mais na lista
+  // (personalizada excluída, importada de extrato, etc.) — senão o campo ficava em branco.
+  if(categoriaExtra && !lista.includes(categoriaExtra)) lista.push(categoriaExtra);
+  const valorAtual = categoriaExtra || sel.value;
   sel.innerHTML = lista.map(c => `<option value="${c}">${c}</option>`).join('');
   if(lista.includes(valorAtual)) sel.value = valorAtual;
 }
@@ -3418,7 +3421,7 @@ function removerOpcaoContaTipo(){
   if(opt) opt.remove();
 }
 
-function updateFormFieldsVisibility(tipo){
+function updateFormFieldsVisibility(tipo, categoriaEdicao){
   const mostrarCartaoNome = tipo === 'cartao' || despesaEhPagamentoCartao();
   const map = {
     fieldCategoria: tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao',
@@ -3440,7 +3443,7 @@ function updateFormFieldsVisibility(tipo){
   document.getElementById('lancParcelasHint').textContent = tipo === 'cartao'
     ? 'Informe mais de 1 para lançar os meses seguintes automaticamente.'
     : (tipo === 'divida' ? 'Informe o valor de cada parcela — o total da dívida é calculado automaticamente (valor × parcelas).' : '');
-  if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect();
+  if(tipo === 'receita' || tipo === 'despesa' || tipo === 'cartao') populateCategoriaSelect(categoriaEdicao);
   if(tipo === 'investimento') populateMetaInvestimentoSelect();
   if(tipo === 'receita' || tipo === 'despesa' || tipo === 'conta') populateFormaContaSelect();
 }
@@ -5105,10 +5108,7 @@ function editLancamento(id){
   document.getElementById('lancData').value = item.data;
   if(item.tipo === 'conta') garantirOpcaoContaTipo();
   document.getElementById('lancTipo').value = item.tipo;
-  if(item.tipo === 'receita' || item.tipo === 'despesa' || item.tipo === 'cartao'){
-    document.getElementById('lancCategoria').value = item.categoria || '';
-  }
-  updateFormFieldsVisibility(item.tipo);
+  updateFormFieldsVisibility(item.tipo, item.categoria);
   document.getElementById('lancValor').value = item.valor;
   document.getElementById('lancDescricao').value = item.descricao || '';
   document.getElementById('lancCartaoNome').value = item.nome || '';
