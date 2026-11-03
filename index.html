@@ -2303,16 +2303,28 @@ function parseOFXExtrato(texto){
 // Extrai os lançamentos de um CSV genérico, identificando colunas de data/valor/descrição
 // pelo cabeçalho (funciona com a maioria dos exports de banco em português).
 function parseCSVExtrato(texto){
-  const linhas = texto.split(/\r\n|\n|\r/).filter(l => l.trim().length > 0);
+  const linhas = texto.replace(/^﻿/, '').split(/\r\n|\n|\r/).filter(l => l.trim().length > 0);
   if(linhas.length < 2) return null;
-  const delim = (linhas[0].split(';').length > linhas[0].split(',').length) ? ';' : ',';
-  const header = splitLinhaCSV(linhas[0], delim).map(normalizarTextoExtrato);
-  const idxData = header.findIndex(h => ['data','date','dt'].includes(h));
+  // Conta os separadores nas primeiras linhas (a 1ª pode ser só um título, sem nenhum separador).
+  const amostra = linhas.slice(0, 30).join('\n');
+  const delim = (amostra.split(';').length > amostra.split(',').length) ? ';' : ',';
+  const ehData = h => ['data','date','dt'].includes(h) || h.startsWith('data ');
+  // Alguns bancos (ex.: Inter) colocam linhas de resumo (conta, período, saldo) antes do cabeçalho
+  // da tabela — procura a primeira linha que tenha ao mesmo tempo coluna de data e de valor.
+  let idxHeader = -1;
+  for(let i = 0; i < Math.min(linhas.length, 30); i++){
+    const h = splitLinhaCSV(linhas[i], delim).map(normalizarTextoExtrato);
+    if(h.some(ehData) && h.some(c => c.includes('valor') || ['value','amount','vlr'].includes(c))){ idxHeader = i; break; }
+  }
+  if(idxHeader === -1) return null;
+  const header = splitLinhaCSV(linhas[idxHeader], delim).map(normalizarTextoExtrato);
+  const idxData = header.findIndex(ehData);
   const idxValor = header.findIndex(h => h.includes('valor') || ['value','amount','vlr'].includes(h));
-  const idxDesc = header.findIndex(h => h.includes('descri') || h.includes('histor') || h.includes('memo') || h.includes('lancamento') || h.includes('estabelecimento') || h.includes('title'));
+  const ehDesc = h => h.includes('descri') || h.includes('histor') || h.includes('memo') || h.includes('lancamento') || h.includes('estabelecimento') || h.includes('title');
+  // Quando há mais de uma coluna de texto (ex.: Histórico + Descrição), junta todas.
+  const idxsDesc = header.map((h, i) => (i !== idxData && ehDesc(h)) ? i : -1).filter(i => i > -1);
   const idxTipo = header.findIndex(h => ['tipo','natureza','d/c','dc'].includes(h));
-  if(idxData === -1 || idxValor === -1) return null;
-  return linhas.slice(1).map(linha => {
+  return linhas.slice(idxHeader + 1).map(linha => {
     const cols = splitLinhaCSV(linha, delim);
     const data = parseDataGenericaExtrato(cols[idxData]);
     let valor = parseValorMonetarioExtrato(cols[idxValor]);
@@ -2321,7 +2333,7 @@ function parseCSVExtrato(texto){
       if(tipoTxt.startsWith('d') || tipoTxt.includes('debit') || tipoTxt.includes('saida')) valor = -Math.abs(valor);
       else if(tipoTxt.startsWith('c') || tipoTxt.includes('credit') || tipoTxt.includes('entrada')) valor = Math.abs(valor);
     }
-    const descricao = idxDesc > -1 ? (cols[idxDesc] || '').trim() : '';
+    const descricao = idxsDesc.map(i => (cols[i] || '').trim()).filter(Boolean).join(' - ');
     return { data, valor, descricao };
   }).filter(item => item.data);
 }
@@ -2460,6 +2472,33 @@ function parsePDFExtrato(linhas){
         valor: -valorAbs,
         descricao: desc.slice(0, 80)
       });
+    });
+    return itens;
+  }
+  // Extrato de conta do Inter: um cabeçalho por dia ("21 de Outubro de 2026 Saldo do dia: R$ 0,00")
+  // seguido de uma linha por lançamento ("Pix enviado: ... -R$ 97,65 -R$ 97,65", valor e depois saldo).
+  const MESES_COMPLETOS = {janeiro:'01',fevereiro:'02',marco:'03',abril:'04',maio:'05',junho:'06',julho:'07',agosto:'08',setembro:'09',outubro:'10',novembro:'11',dezembro:'12'};
+  const reDiaCabecalho = /^(\d{1,2})\s+de\s+([A-Za-zçÇ]+)\s+de\s+(\d{4})\b/i;
+  const mesDoCabecalho = (l) => {
+    const m = l.match(reDiaCabecalho);
+    return m ? MESES_COMPLETOS[normalizarTextoExtrato(m[2])] : null;
+  };
+  if(linhas.some(l => mesDoCabecalho(l))){
+    let dataDia = null;
+    linhas.forEach(linha => {
+      const cab = linha.match(reDiaCabecalho);
+      if(cab && mesDoCabecalho(linha)){
+        dataDia = `${cab[3]}-${mesDoCabecalho(linha)}-${cab[1].padStart(2,'0')}`;
+        return;
+      }
+      if(!dataDia) return;
+      const vm = linha.match(/(-|−)?\s?R\$\s?(\d{1,3}(?:\.\d{3})*,\d{2})/);
+      if(!vm) return;
+      const valorAbs = parseFloat(vm[2].replace(/\./g,'').replace(',','.'));
+      if(!isFinite(valorAbs) || valorAbs === 0) return;
+      const desc = linha.slice(0, vm.index).replace(/\s+/g,' ').trim();
+      if(!desc || /^saldo\b|^total\b/i.test(desc)) return;
+      itens.push({ data: dataDia, valor: vm[1] ? -valorAbs : valorAbs, descricao: desc.slice(0, 80) });
     });
     return itens;
   }
