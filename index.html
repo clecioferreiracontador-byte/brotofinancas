@@ -601,6 +601,47 @@
      que os de Hoje, e sem isso a caixa cresceria/quebraria linha, fazendo o modal "pular". */
   .score-stat-valor{ font-size:0.78rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+  /* Saúde financeira: resumo detalhado (gastos por forma/categoria, entradas) e orçamento diário */
+  .sf-section{ margin-top:20px; }
+  .sf-title{ font-size:0.7rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .sf-subtitle{ font-size:0.76rem; font-weight:600; color:var(--muted); margin:12px 0 6px; }
+  .sf-box{ background:var(--card2); border-radius:10px; padding:10px 12px; }
+  .sf-row{ padding:6px 0; }
+  .sf-row + .sf-row{ border-top:1px solid var(--border); }
+  .sf-row-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:0.84rem; }
+  .sf-row-top .sf-nome{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-row-top .sf-valor{ font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .sf-row-sub{ font-size:0.72rem; color:var(--muted); margin-top:2px; }
+  .sf-bar{ height:5px; background:var(--border); border-radius:3px; margin-top:5px; overflow:hidden; }
+  .sf-bar > span{ display:block; height:100%; border-radius:3px; }
+  .sf-total{ display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700; padding-top:8px; margin-top:4px; border-top:1px solid var(--border); }
+  .sf-nota{ font-size:0.72rem; color:var(--muted); margin-top:8px; line-height:1.4; }
+  .sf-chips{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; scrollbar-width:none; }
+  .sf-chip{ flex-shrink:0; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:20px; padding:5px 12px; font-size:0.76rem; font-weight:600; cursor:pointer; }
+  .sf-chip.active{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  .sf-hoje-box{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .sf-hoje-box > div{ background:var(--card2); border-radius:10px; padding:9px 6px; text-align:center; overflow:hidden; }
+  .sf-hoje-box .sf-big{ font-size:0.9rem; font-weight:800; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .sf-cal{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; }
+  .sf-cal-dow{ font-size:0.62rem; font-weight:700; color:var(--muted); text-align:center; text-transform:uppercase; padding-bottom:2px; }
+  .sf-cal-dia{ background:var(--card2); border:1px solid transparent; border-radius:8px; padding:4px 2px 5px; text-align:center; min-height:44px; display:flex; flex-direction:column; justify-content:space-between; }
+  .sf-cal-dia .n{ font-size:0.66rem; color:var(--muted); font-weight:600; }
+  .sf-cal-dia .v{ font-size:0.7rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
+  .sf-cal-dia.passado .v{ font-weight:600; }
+  .sf-cal-dia.futuro .v{ color:var(--blue); }
+  .sf-cal-dia.hoje{ border-color:var(--blue); background:color-mix(in srgb, var(--blue) 14%, var(--card2)); }
+  .sf-cal-dia.hoje .n{ color:var(--blue); }
+  .sf-cal-vazio{ min-height:44px; }
+  .sf-legenda{ display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.68rem; color:var(--muted); margin-top:8px; }
+  .sf-legenda i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+  .sf-cat-tabela{ margin-top:12px; }
+  .sf-cat-linha{ display:grid; grid-template-columns:minmax(0,1.4fr) 1fr 1fr; gap:6px; align-items:center; font-size:0.8rem; padding:7px 4px; border-radius:8px; cursor:pointer; }
+  .sf-cat-linha.cab{ font-size:0.64rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; cursor:default; padding-top:0; }
+  .sf-cat-linha:not(.cab):hover{ background:var(--card2); }
+  .sf-cat-linha.ativa{ background:var(--card2); }
+  .sf-cat-linha > span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-cat-linha > span:not(:first-child){ text-align:right; font-variant-numeric:tabular-nums; }
+
   .conta-forma-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;}
   .conta-forma-box .label{color:var(--muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:.03em;}
   .conta-forma-box .value{font-size:1.1rem; font-weight:700; margin-top:4px;}
@@ -1517,7 +1558,7 @@
 </div>
 
 <div id="scoreModal" class="modal-overlay" onclick="if(event.target===this) fecharScoreFinanceiro()">
-  <div class="modal-card" style="max-width:420px;">
+  <div class="modal-card" style="max-width:560px;">
     <div class="modal-header">
       <h3>Saúde financeira</h3>
       <button class="modal-close-btn" onclick="fecharScoreFinanceiro()" title="Fechar" aria-label="Fechar">
@@ -1548,6 +1589,19 @@
       <div><div class="hint">Entradas</div><div class="info blur-target score-stat-valor" id="scoreEntradas">R$ 0,00</div></div>
       <div><div class="hint">Saídas</div><div class="neg blur-target score-stat-valor" id="scoreSaidas">R$ 0,00</div></div>
       <div><div class="hint">Resultado</div><div class="blur-target score-stat-valor" id="scoreResultado">R$ 0,00</div></div>
+    </div>
+
+    <div class="sf-section">
+      <div class="sf-title">Para onde foi o dinheiro <span id="sfPeriodoLabel" style="text-transform:none; letter-spacing:0; font-weight:500;"></span></div>
+      <div id="sfGastos"></div>
+    </div>
+    <div class="sf-section">
+      <div class="sf-title">De onde veio o dinheiro</div>
+      <div id="sfEntradas"></div>
+    </div>
+    <div class="sf-section">
+      <div class="sf-title">Orçamento: quanto ainda posso gastar por dia</div>
+      <div id="sfOrcamento"></div>
     </div>
   </div>
 </div>
@@ -4192,13 +4246,19 @@ function renderNotificacoes(){
 // ---------- Score de Saúde Financeira (estilo "Serasa"), calculado a partir dos lançamentos ----------
 let scorePeriodoAtual = 'hoje';
 
+// Data de hoje no fuso do aparelho (toISOString usa UTC e, à noite no Brasil, já daria o dia seguinte).
+function hojeLocalISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function intervaloScorePeriodo(periodo){
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = hojeLocalISO();
   if(periodo === 'hoje') return { inicio: hoje, fim: hoje };
   if(periodo === 'mes') return { inicio: hoje.slice(0,7) + '-01', fim: hoje };
-  const d = new Date();
-  d.setMonth(d.getMonth() - 2);
-  return { inicio: d.toISOString().slice(0,7) + '-01', fim: hoje };
+  let ano = Number(hoje.slice(0,4)), mes = Number(hoje.slice(5,7)) - 2;
+  if(mes < 1){ mes += 12; ano -= 1; }
+  return { inicio: `${ano}-${String(mes).padStart(2,'0')}-01`, fim: hoje };
 }
 
 // Score simples e explicável: parte de uma base neutra (50), soma/subtrai conforme a taxa de
@@ -4441,6 +4501,250 @@ function renderScoreFinanceiroDetalhe(){
   const resultadoEl = document.getElementById('scoreResultado');
   resultadoEl.textContent = fmt(r.resultado);
   resultadoEl.className = 'blur-target score-stat-valor ' + (r.resultado >= 0 ? 'pos' : 'neg');
+
+  renderSaudeDetalhamento(scorePeriodoAtual);
+  renderSaudeOrcamentoDiario();
+}
+
+// ---------- Saúde financeira: detalhamento de entradas e saídas do período ----------
+function escHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Forma de pagamento de um gasto: cartão (compras tipo cartao), Pix (despesa com "pix" na
+// descrição — é assim que vem dos extratos importados), dinheiro (forma Espécie) ou
+// débito/boleto na conta do banco.
+function formaPagamentoGasto(l){
+  if(l.tipo === 'cartao') return 'cartao';
+  if(l.forma === 'Espécie') return 'especie';
+  if(/\bpix\b/i.test(l.descricao || '')) return 'pix';
+  return 'banco';
+}
+
+const SF_FORMAS = {
+  cartao:  { label: 'Cartão de crédito', cor: 'var(--orange)' },
+  pix:     { label: 'Pix', cor: 'var(--green)' },
+  banco:   { label: 'Débito / boleto / transferência', cor: 'var(--blue)' },
+  especie: { label: 'Dinheiro (espécie)', cor: 'var(--yellow)' }
+};
+
+function sfLinha(nome, valor, total, cor, sub){
+  const pct = total > 0 ? Math.max(1, Math.round(valor / total * 100)) : 0;
+  return `<div class="sf-row">
+    <div class="sf-row-top"><span class="sf-nome">${escHtml(nome)}</span><span class="sf-valor blur-target">${fmt(valor)}</span></div>
+    ${sub ? `<div class="sf-row-sub">${sub}</div>` : ''}
+    <div class="sf-bar"><span style="width:${pct}%; background:${cor};"></span></div>
+  </div>`;
+}
+
+function somaPor(itens, chaveFn){
+  const m = {};
+  itens.forEach(l => { const k = chaveFn(l); m[k] = (m[k] || 0) + Number(l.valor); });
+  return Object.entries(m).sort((a,b) => b[1] - a[1]);
+}
+
+function renderSaudeDetalhamento(periodo){
+  const { inicio, fim } = intervaloScorePeriodo(periodo);
+  const noPeriodo = l => l.data >= inicio && l.data <= fim;
+  document.getElementById('sfPeriodoLabel').textContent = inicio === fim
+    ? `· ${fmtDate(inicio)}` : `· ${fmtDate(inicio)} a ${fmtDate(fim)}`;
+
+  // Gastos = compras no cartão + despesas. O pagamento da fatura (despesa "Cartão de Crédito")
+  // fica de fora da soma, senão a compra contaria duas vezes (na compra e no pagamento).
+  const gastos = data.lancamentos.filter(l => noPeriodo(l) && (l.tipo === 'cartao' || (l.tipo === 'despesa' && l.categoria !== 'Cartão de Crédito')));
+  const pagFaturas = data.lancamentos.filter(l => noPeriodo(l) && l.tipo === 'despesa' && l.categoria === 'Cartão de Crédito');
+  const totalGastos = gastos.reduce((s,l) => s + Number(l.valor), 0);
+  const totalPagFaturas = pagFaturas.reduce((s,l) => s + Number(l.valor), 0);
+
+  const elG = document.getElementById('sfGastos');
+  if(gastos.length === 0 && pagFaturas.length === 0){
+    elG.innerHTML = '<div class="sf-box hint">Nenhum gasto lançado no período.</div>';
+  } else {
+    const porForma = somaPor(gastos, formaPagamentoGasto);
+    const formaHtml = porForma.map(([forma, valor]) => {
+      const itens = gastos.filter(l => formaPagamentoGasto(l) === forma);
+      let sub = `${itens.length} lançamento${itens.length === 1 ? '' : 's'}`;
+      if(forma === 'cartao' || forma === 'banco'){
+        const det = somaPor(itens, l => forma === 'cartao' ? (l.nome || 'Cartão') : (l.forma || 'Banco'));
+        if(det.length > 1 || (det[0] && det[0][0] !== 'Banco')){
+          sub += ' · ' + det.map(([n,v]) => `${escHtml(n)} <span class="blur-target">${fmt(v)}</span>`).join(' · ');
+        }
+      }
+      return sfLinha(SF_FORMAS[forma].label, valor, totalGastos, SF_FORMAS[forma].cor, sub);
+    }).join('');
+
+    const porCat = somaPor(gastos, l => l.categoria || 'Outros');
+    const catHtml = porCat.map(([cat, valor]) => {
+      const pct = totalGastos > 0 ? (valor / totalGastos * 100).toFixed(0) : 0;
+      return sfLinha(cat, valor, totalGastos, 'var(--red)', `${pct}% dos gastos`);
+    }).join('');
+
+    elG.innerHTML = `
+      <div class="sf-subtitle" style="margin-top:0;">Por forma de pagamento</div>
+      <div class="sf-box">
+        ${formaHtml || '<div class="hint">Nenhum gasto.</div>'}
+        <div class="sf-total"><span>Total gasto</span><span class="neg blur-target">${fmt(totalGastos)}</span></div>
+      </div>
+      ${totalPagFaturas > 0 ? `<div class="sf-nota">Pagamentos de fatura no período: <strong class="blur-target">${fmt(totalPagFaturas)}</strong> — não entram no total acima, porque as compras do cartão já foram contadas.</div>` : ''}
+      ${catHtml ? `<div class="sf-subtitle">Por categoria</div><div class="sf-box">${catHtml}</div>` : ''}`;
+  }
+
+  const entradas = data.lancamentos.filter(l => noPeriodo(l) && l.tipo === 'receita');
+  const totalEntradas = entradas.reduce((s,l) => s + Number(l.valor), 0);
+  const elE = document.getElementById('sfEntradas');
+  if(entradas.length === 0){
+    elE.innerHTML = '<div class="sf-box hint">Nenhuma entrada lançada no período.</div>';
+  } else {
+    const porCat = somaPor(entradas, l => l.categoria || 'Outros');
+    const porConta = somaPor(entradas, l => l.forma || 'Banco');
+    elE.innerHTML = `
+      <div class="sf-box">
+        ${porCat.map(([cat, v]) => sfLinha(cat, v, totalEntradas, 'var(--green)')).join('')}
+        <div class="sf-total"><span>Total recebido</span><span class="pos blur-target">${fmt(totalEntradas)}</span></div>
+      </div>
+      ${porConta.length > 1 ? `<div class="sf-nota">Onde entrou: ${porConta.map(([n,v]) => `${escHtml(n)} <span class="blur-target">${fmt(v)}</span>`).join(' · ')}</div>` : ''}`;
+  }
+}
+
+// ---------- Saúde financeira: calendário do orçamento — quanto ainda dá pra gastar por dia ----------
+let sfOrcCategoriaSel = '__todas';
+
+function selecionarCategoriaOrcDiario(cat){
+  sfOrcCategoriaSel = cat;
+  renderSaudeOrcamentoDiario();
+}
+
+// Valor curto pra caber no quadradinho do calendário (sem "R$" e sem centavos quando passa de 100).
+function fmtCurtoCal(v){
+  v = Number(v) || 0;
+  if(Math.abs(v) >= 1000) return (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k';
+  if(Math.abs(v) >= 100) return Math.round(v).toLocaleString('pt-BR');
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// Sempre o mês corrente de verdade (o calendário fala de "hoje"), independente do filtro de mês.
+// Para cada categoria com orçamento: o que sobrou até ontem é dividido igualmente pelos dias que
+// faltam (contando hoje). Assim, gastar menos hoje aumenta o limite dos próximos dias e vice-versa.
+function calcularOrcamentoDiario(){
+  const hoje = hojeLocalISO();
+  const mk = hoje.slice(0,7);
+  const ano = Number(mk.slice(0,4)), mes = Number(mk.slice(5,7));
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const diaHoje = Number(hoje.slice(8,10));
+  const diasRestantes = diasNoMes - diaHoje + 1;
+
+  const orc = getOrcamentoMes(mk);
+  const excluidas = data.orcamentoCategoriasExcluidas || [];
+  const orcadoPorCat = {};
+  Object.entries(orc.categorias).forEach(([cat, v]) => {
+    if(cat !== 'Cartão de Crédito' && !excluidas.includes(cat) && Number(v) > 0) orcadoPorCat[cat] = Number(v);
+  });
+  const temCategorias = Object.keys(orcadoPorCat).length > 0;
+  const orcadoTotal = orcamentoTotalMes(mk);
+
+  // Mesmo critério do painel de orçamento: compras no cartão + despesas, menos pagamento de fatura.
+  const gastosMes = data.lancamentos.filter(l => (l.tipo === 'cartao' || l.tipo === 'despesa') && l.categoria !== 'Cartão de Crédito' && itemInMonth(l, mk));
+
+  function montar(nome, orcado, filtroFn){
+    const itens = gastosMes.filter(filtroFn);
+    const gastoPorDia = {};
+    itens.forEach(l => { const d = Number(l.data.slice(8,10)); gastoPorDia[d] = (gastoPorDia[d] || 0) + Number(l.valor); });
+    let gastoAteOntem = 0, gastoHoje = 0, gastoTotal = 0;
+    Object.entries(gastoPorDia).forEach(([d, v]) => {
+      d = Number(d); gastoTotal += v;
+      if(d < diaHoje) gastoAteOntem += v; else if(d === diaHoje) gastoHoje += v;
+    });
+    const sobraInicioHoje = orcado - gastoAteOntem;
+    const porDia = Math.max(0, sobraInicioHoje) / diasRestantes;
+    return {
+      nome, orcado, gastoPorDia, gastoAteOntem, gastoHoje, gastoTotal,
+      restante: orcado - gastoTotal,
+      porDia,
+      metaDiariaOriginal: orcado / diasNoMes,
+      aindaHoje: porDia - gastoHoje
+    };
+  }
+
+  const categorias = Object.entries(orcadoPorCat)
+    .sort((a,b) => b[1] - a[1])
+    .map(([cat, v]) => montar(cat, v, l => (l.categoria || 'Outros') === cat));
+  const todas = montar('Todas', orcadoTotal, l => !excluidas.includes(l.categoria || 'Outros'));
+
+  return { hoje, mk, ano, mes, diasNoMes, diaHoje, diasRestantes, categorias, todas, temCategorias };
+}
+
+function renderSaudeOrcamentoDiario(){
+  const el = document.getElementById('sfOrcamento');
+  const o = calcularOrcamentoDiario();
+  if(o.todas.orcado <= 0){
+    el.innerHTML = `<div class="sf-box hint">Defina um orçamento por categoria (painel Orçamento, mês ${fmtMonthKey(o.mk)}) para ver aqui quanto você ainda pode gastar por dia em cada categoria.</div>`;
+    return;
+  }
+  if(sfOrcCategoriaSel !== '__todas' && !o.categorias.some(c => c.nome === sfOrcCategoriaSel)) sfOrcCategoriaSel = '__todas';
+  const sel = sfOrcCategoriaSel === '__todas' ? o.todas : o.categorias.find(c => c.nome === sfOrcCategoriaSel);
+
+  const chips = [`<button type="button" class="sf-chip ${sfOrcCategoriaSel === '__todas' ? 'active' : ''}" onclick="selecionarCategoriaOrcDiario('__todas')">Todas</button>`]
+    .concat(o.categorias.map(c => `<button type="button" class="sf-chip ${sfOrcCategoriaSel === c.nome ? 'active' : ''}" onclick="selecionarCategoriaOrcDiario(this.dataset.cat)" data-cat="${escHtml(c.nome)}">${escHtml(c.nome)}</button>`))
+    .join('');
+
+  const aindaHojeCls = sel.aindaHoje < 0 ? 'neg' : 'pos';
+  const restanteCls = sel.restante < 0 ? 'neg' : '';
+  const resumo = `
+    <div class="sf-hoje-box">
+      <div><div class="hint">Por dia (${o.diasRestantes} dia${o.diasRestantes === 1 ? '' : 's'})</div><div class="sf-big info blur-target">${fmt(sel.porDia)}</div></div>
+      <div><div class="hint">Ainda hoje</div><div class="sf-big ${aindaHojeCls} blur-target">${fmt(sel.aindaHoje)}</div></div>
+      <div><div class="hint">Resta no mês</div><div class="sf-big ${restanteCls} blur-target">${fmt(sel.restante)}</div></div>
+    </div>`;
+
+  // Calendário: dias passados mostram o que foi gasto (verde se ficou dentro da meta diária do
+  // mês, vermelho se passou); hoje e os próximos dias mostram quanto ainda dá pra gastar.
+  const dow = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const primeiroDow = new Date(o.ano, o.mes - 1, 1).getDay();
+  let cal = dow.map(d => `<div class="sf-cal-dow">${d}</div>`).join('');
+  for(let i = 0; i < primeiroDow; i++) cal += '<div class="sf-cal-vazio"></div>';
+  for(let d = 1; d <= o.diasNoMes; d++){
+    const gasto = sel.gastoPorDia[d] || 0;
+    let cls, valor, cor = '', title;
+    if(d < o.diaHoje){
+      cls = 'passado';
+      valor = gasto > 0 ? fmtCurtoCal(gasto) : '–';
+      cor = gasto === 0 ? 'color:var(--muted);' : (gasto <= sel.metaDiariaOriginal ? 'color:var(--green);' : 'color:var(--red);');
+      title = `Dia ${d}: gasto ${fmt(gasto)}`;
+    } else if(d === o.diaHoje){
+      cls = 'hoje';
+      valor = fmtCurtoCal(sel.aindaHoje);
+      cor = sel.aindaHoje < 0 ? 'color:var(--red);' : 'color:var(--blue);';
+      title = `Hoje: pode gastar ${fmt(sel.porDia)} — já gastou ${fmt(sel.gastoHoje)}, resta ${fmt(sel.aindaHoje)}`;
+    } else {
+      cls = 'futuro';
+      valor = fmtCurtoCal(sel.porDia);
+      title = `Dia ${d}: pode gastar até ${fmt(sel.porDia)}` + (gasto > 0 ? ` (já há ${fmt(gasto)} lançado nesse dia)` : '');
+    }
+    cal += `<div class="sf-cal-dia ${cls}" title="${escHtml(title)}"><span class="n">${d}</span><span class="v blur-target" style="${cor}">${valor}</span></div>`;
+  }
+
+  const tabela = o.categorias.length ? `
+    <div class="sf-cat-tabela">
+      <div class="sf-cat-linha cab"><span>Categoria</span><span>Resta no mês</span><span>Por dia</span></div>
+      ${o.categorias.map(c => `<div class="sf-cat-linha ${sfOrcCategoriaSel === c.nome ? 'ativa' : ''}" data-cat="${escHtml(c.nome)}" onclick="selecionarCategoriaOrcDiario(this.dataset.cat)">
+        <span>${escHtml(c.nome)}</span>
+        <span class="blur-target ${c.restante < 0 ? 'neg' : ''}">${fmt(c.restante)}</span>
+        <span class="blur-target info" style="font-weight:700;">${fmt(c.porDia)}</span>
+      </div>`).join('')}
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="hint" style="margin-bottom:8px;">Hoje é ${fmtDate(o.hoje)} · orçamento de ${escHtml(sel.nome === 'Todas' ? 'todas as categorias' : sel.nome)}: <span class="blur-target">${fmt(sel.orcado)}</span>, gasto até agora <span class="blur-target">${fmt(sel.gastoTotal)}</span>.</div>
+    <div class="sf-chips">${chips}</div>
+    ${resumo}
+    <div class="sf-cal">${cal}</div>
+    <div class="sf-legenda">
+      <span><i style="background:var(--green)"></i>gasto dentro da meta do dia</span>
+      <span><i style="background:var(--red)"></i>passou da meta</span>
+      <span><i style="background:var(--blue)"></i>quanto ainda pode gastar</span>
+    </div>
+    <div class="sf-nota">O que sobrou do orçamento até ontem é dividido igualmente pelos ${o.diasRestantes} dias que faltam (contando hoje). Gastar menos hoje aumenta o limite dos próximos dias.</div>
+    ${tabela}`;
 }
 
 function salvarOrcamentoCategoria(categoria, valor){
