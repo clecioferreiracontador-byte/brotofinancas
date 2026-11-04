@@ -663,6 +663,8 @@
   .cartoes-toggle svg{ width:14px; height:14px; transition:transform .2s; }
   #panelCartoes.minimizado .cartoes-toggle svg{ transform:rotate(180deg); }
   #panelCartoes.minimizado > .panel-body{ display:none; }
+  #panelPoker.grafico-oculto .cartoes-toggle svg{ transform:rotate(180deg); }
+  #panelPoker.grafico-oculto .poker-grafico-wrap{ display:none; }
   @media (max-width:640px){
     .poker-kpis{ gap:6px; }
     .poker-kpis .card{ padding:8px 6px; min-width:0; text-align:center; }
@@ -1262,6 +1264,7 @@
   <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 7 6 7 10a4 4 0 0 1-7 2.6A4 4 0 0 1 5 13c0-4 4-6 7-10z"/><path d="M12 15v5M9.5 20h5"/></svg></span> Poker</span>
     <span class="h2-actions">
       <button class="secondary small" onclick="abrirPoker()">Torneios</button>
+      <button class="secondary small cartoes-toggle" id="pokerGraficoToggleBtn" onclick="togglePokerGraficoOculto()" title="Ocultar/mostrar gráfico" aria-label="Ocultar ou mostrar o gráfico do poker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg><span id="pokerGraficoToggleTxt">Ocultar</span></button>
     </span>
   </h2>
   <div class="panel-body">
@@ -1271,6 +1274,7 @@
       <div class="card"><div class="label">Neste mês</div><div class="value blur-target" id="pokerLucroMes">R$ 0,00</div></div>
       <div class="card"><div class="label">ROI</div><div class="value" id="pokerRoiCaixa">--</div></div>
     </div>
+    <div class="poker-grafico-wrap">
     <div style="display:flex; justify-content:flex-end; margin:10px 0 4px;">
       <select id="pokerPeriodoCaixa" onchange="renderPokerPainel()" style="width:auto;">
         <option value="0">Todo o período</option>
@@ -1280,6 +1284,7 @@
       </select>
     </div>
     <div class="chart-box" style="height:200px;"><canvas id="chartPokerBankroll"></canvas></div>
+    </div>
   </div>
 </div>
 
@@ -5875,6 +5880,20 @@ function toggleCartoesMinimizado(){
   aplicarCartoesMinimizado();
 }
 document.addEventListener('DOMContentLoaded', aplicarCartoesMinimizado);
+
+// Ocultar o gráfico do painel de Poker na Home (os totais continuam visíveis): lembra a escolha neste aparelho.
+function aplicarPokerGraficoOculto(){
+  let oculto = false;
+  try{ oculto = localStorage.getItem('broto_poker_grafico_oculto') === '1'; }catch(e){}
+  document.getElementById('panelPoker').classList.toggle('grafico-oculto', oculto);
+  document.getElementById('pokerGraficoToggleTxt').textContent = oculto ? 'Mostrar' : 'Ocultar';
+}
+function togglePokerGraficoOculto(){
+  const oculto = !document.getElementById('panelPoker').classList.contains('grafico-oculto');
+  try{ localStorage.setItem('broto_poker_grafico_oculto', oculto ? '1' : '0'); }catch(e){}
+  aplicarPokerGraficoOculto();
+}
+document.addEventListener('DOMContentLoaded', aplicarPokerGraficoOculto);
 
 function isMobileScreen(){
   return window.matchMedia('(max-width:640px)').matches;
