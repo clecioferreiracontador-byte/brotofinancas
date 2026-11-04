@@ -4791,9 +4791,9 @@ function renderSaudeOrcamentoDiario(mk){
   if(sfOrcCategoriaSel !== '__todas' && !o.categorias.some(c => c.nome === sfOrcCategoriaSel)) sfOrcCategoriaSel = '__todas';
   const sel = sfOrcCategoriaSel === '__todas' ? o.todas : o.categorias.find(c => c.nome === sfOrcCategoriaSel);
 
-  const chips = [`<button type="button" class="sf-chip ${sfOrcCategoriaSel === '__todas' ? 'active' : ''}" onclick="selecionarCategoriaOrcDiario('__todas')">Todas</button>`]
-    .concat(o.categorias.map(c => `<button type="button" class="sf-chip ${sfOrcCategoriaSel === c.nome ? 'active' : ''}" onclick="selecionarCategoriaOrcDiario(this.dataset.cat)" data-cat="${escHtml(c.nome)}">${escHtml(c.nome)}</button>`))
-    .join('');
+  // Só o botão "Todas" fica aqui em cima — cada categoria se escolhe tocando na linha dela na
+  // tabela logo abaixo do calendário.
+  const chips = `<button type="button" class="sf-chip ${sfOrcCategoriaSel === '__todas' ? 'active' : ''}" onclick="selecionarCategoriaOrcDiario('__todas')">Todas</button>`;
 
   const aindaHojeCls = sel.aindaHoje < 0 ? 'neg' : 'pos';
   const restanteCls = sel.restante < 0 ? 'neg' : '';
