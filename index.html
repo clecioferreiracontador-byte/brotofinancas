@@ -1083,7 +1083,10 @@
     </div>
     <div class="hint" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;">
       <span>Orçamento por categoria (despesas e compras no cartão do mês)</span>
-      <button type="button" class="secondary iconbtn" onclick="incluirCategoriaOrcamento()" title="Incluir uma despesa no orçamento">+</button>
+      <span style="display:flex; gap:6px; flex-shrink:0;">
+        <button type="button" class="secondary iconbtn" onclick="copiarOrcamentoMesAnterior()" title="Copiar o orçamento do mês anterior" aria-label="Copiar o orçamento do mês anterior" style="display:inline-flex; align-items:center; justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg></button>
+        <button type="button" class="secondary iconbtn" onclick="incluirCategoriaOrcamento()" title="Incluir uma despesa no orçamento">+</button>
+      </span>
     </div>
     <div id="orcamentoIncluirBox" style="display:none; gap:6px; align-items:center; margin-bottom:10px;">
       <select id="orcamentoIncluirSelect" style="flex:1; min-width:0;"></select>
@@ -5000,6 +5003,38 @@ function renderOrcamento(){
       </div>
     `;
   }).join('');
+}
+
+// Copia para o mês aberto os valores do orçamento por categoria do mês anterior. Se o mês aberto
+// já tiver valores, pergunta antes de substituir.
+function copiarOrcamentoMesAnterior(){
+  const monthKey = currentMonthKey();
+  if(!monthKey) return;
+  let ano = Number(monthKey.slice(0,4)), mes = Number(monthKey.slice(5,7)) - 1;
+  if(mes < 1){ mes = 12; ano -= 1; }
+  const anteriorKey = `${ano}-${String(mes).padStart(2,'0')}`;
+  const anterior = (data.orcamentos || {})[anteriorKey];
+  const valoresAnterior = anterior && anterior.categorias
+    ? Object.entries(anterior.categorias).filter(([, v]) => Number(v) > 0) : [];
+  if(valoresAnterior.length === 0){
+    alert('O mês anterior (' + fmtMonthKey(anteriorKey) + ') não tem orçamento por categoria para copiar.');
+    return;
+  }
+  const orc = getOrcamentoMes(monthKey);
+  const jaTem = Object.values(orc.categorias).some(v => Number(v) > 0);
+  const msg = jaTem
+    ? 'Substituir o orçamento de ' + fmtMonthKey(monthKey) + ' pelo de ' + fmtMonthKey(anteriorKey) + '? Os valores atuais deste mês serão trocados.'
+    : 'Copiar o orçamento de ' + fmtMonthKey(anteriorKey) + ' para ' + fmtMonthKey(monthKey) + '?';
+  if(!confirm(msg)) return;
+  orc.categorias = {};
+  valoresAnterior.forEach(([cat, v]) => { orc.categorias[cat] = Number(v); });
+  // Categorias com valor no mês anterior voltam para a lista, caso tenham sido excluídas dela.
+  const copiadas = valoresAnterior.map(([cat]) => cat);
+  data.orcamentoCategoriasExcluidas = (data.orcamentoCategoriasExcluidas || []).filter(c => !copiadas.includes(c));
+  if(!data.orcamentoCategoriasIncluidas) data.orcamentoCategoriasIncluidas = [];
+  copiadas.forEach(cat => { if(cat !== 'Cartão de Crédito' && !data.orcamentoCategoriasIncluidas.includes(cat)) data.orcamentoCategoriasIncluidas.push(cat); });
+  saveData();
+  renderOrcamento();
 }
 
 function excluirCategoriaOrcamento(categoria){
