@@ -390,7 +390,7 @@
   button.danger{background:var(--red); color:#fff;}
   .modal-card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto; overscroll-behavior:contain;}
   .modal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px;}
-  .modal-header h3{margin:0; font-size:1.05rem;}
+  .modal-header h3{margin:0; font-size:1.05rem; min-width:0;}
   .modal-close-btn{
     background:none; border:none; color:var(--muted); cursor:pointer; padding:0; flex-shrink:0;
     width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -407,6 +407,12 @@
   #relatorioModoPeriodo, #relatorioMesDe, #relatorioMesAte{
     width:130px; max-width:100%; -webkit-min-logical-width:130px;
   }
+  /* Seletor de mês compacto (Orçamento e Saúde financeira): mostra "nov/2026" num botão e deixa o
+     input[type=month] invisível por cima, ocupando o botão todo — o toque cai no próprio input e
+     abre o seletor nativo. Assim o texto nunca fica cortado nem empurra nada para fora da tela. */
+  .mes-pill{ position:relative; display:inline-flex; align-items:center; gap:4px; height:32px; padding:0 10px; border:1px solid var(--border); border-radius:8px; background:var(--card2); color:var(--text); font-size:0.78rem; font-weight:600; white-space:nowrap; cursor:pointer; flex-shrink:0; }
+  .mes-pill svg{ width:13px; height:13px; color:var(--muted); }
+  input[type="month"].mes-pill-input{ position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; border:none; opacity:0; min-width:0; max-width:none; -webkit-min-logical-width:0; cursor:pointer; }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
@@ -599,7 +605,7 @@
   .score-stats .hint{ margin-bottom:2px; }
   /* Fonte reduzida e sem quebra de linha: valores acumulados de Mês/3 meses ficam bem maiores
      que os de Hoje, e sem isso a caixa cresceria/quebraria linha, fazendo o modal "pular". */
-  .score-stat-valor{ font-size:0.78rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .score-stat-valor{ font-size:clamp(0.7rem, 3.4vw, 0.78rem); font-weight:700; }
 
   /* Saúde financeira: resumo detalhado (gastos por forma/categoria, entradas) e orçamento diário */
   .sf-section{ margin-top:20px; }
@@ -609,19 +615,19 @@
   .sf-row{ padding:6px 0; }
   .sf-row + .sf-row{ border-top:1px solid var(--border); }
   .sf-row-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:0.84rem; }
-  .sf-row-top .sf-nome{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-row-top .sf-nome{ min-width:0; overflow-wrap:anywhere; }
   .sf-row-top .sf-valor{ font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums; }
   .sf-row-sub{ font-size:0.72rem; color:var(--muted); margin-top:2px; }
   .sf-bar{ height:5px; background:var(--border); border-radius:3px; margin-top:5px; overflow:hidden; }
   .sf-bar > span{ display:block; height:100%; border-radius:3px; }
   .sf-total{ display:flex; justify-content:space-between; font-size:0.84rem; font-weight:700; padding-top:8px; margin-top:4px; border-top:1px solid var(--border); }
   .sf-nota{ font-size:0.72rem; color:var(--muted); margin-top:8px; line-height:1.4; }
-  .sf-chips{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; scrollbar-width:none; }
-  .sf-chip{ flex-shrink:0; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:20px; padding:5px 12px; font-size:0.76rem; font-weight:600; cursor:pointer; }
+  .sf-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .sf-chip{ max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:left; background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:20px; padding:5px 12px; font-size:0.76rem; font-weight:600; cursor:pointer; }
   .sf-chip.active{ background:var(--blue); border-color:var(--blue); color:#fff; }
   .sf-hoje-box{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
   .sf-hoje-box > div{ background:var(--card2); border-radius:10px; padding:9px 6px; text-align:center; overflow:hidden; }
-  .sf-hoje-box .sf-big{ font-size:0.9rem; font-weight:800; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .sf-hoje-box .sf-big{ font-size:clamp(0.74rem, 3.6vw, 0.9rem); font-weight:800; font-variant-numeric:tabular-nums; }
   .sf-cal{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; }
   .sf-cal-dow{ font-size:0.62rem; font-weight:700; color:var(--muted); text-align:center; text-transform:uppercase; padding-bottom:2px; }
   .sf-cal-dia{ background:var(--card2); border:1px solid transparent; border-radius:8px; padding:4px 2px 5px; text-align:center; min-height:44px; display:flex; flex-direction:column; justify-content:space-between; }
@@ -639,7 +645,8 @@
   .sf-cat-linha.cab{ font-size:0.64rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; cursor:default; padding-top:0; }
   .sf-cat-linha:not(.cab):hover{ background:var(--card2); }
   .sf-cat-linha.ativa{ background:var(--card2); }
-  .sf-cat-linha > span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sf-cat-linha > span{ min-width:0; }
+  .sf-cat-linha > span:first-child{ overflow-wrap:anywhere; }
   .sf-cat-linha > span:not(:first-child){ text-align:right; font-variant-numeric:tabular-nums; }
 
   .conta-forma-box{background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;}
@@ -664,7 +671,7 @@
   #panelCartoes.minimizado .cartoes-toggle svg{ transform:rotate(180deg); }
   #panelCartoes.minimizado > .panel-body{ display:none; }
   #panelPoker.grafico-oculto .cartoes-toggle svg{ transform:rotate(180deg); }
-  #panelPoker.grafico-oculto .poker-grafico-wrap{ display:none; }
+  #panelPoker.grafico-oculto > .panel-body{ display:none; }
   @media (max-width:640px){
     .poker-kpis{ gap:6px; }
     .poker-kpis .card{ padding:8px 6px; min-width:0; text-align:center; }
@@ -1045,10 +1052,13 @@
 </div>
 
 <div id="orcamentoModal" class="page-view">
-  <div class="modal-card view-card" style="max-width:420px;">
+  <div class="modal-card view-card" style="max-width:480px;">
     <div class="modal-header">
       <h3>Orçamento do Mês</h3>
-      <button class="secondary small" onclick="irHome()">Voltar</button>
+      <div class="modal-header-right">
+        <label class="mes-pill" title="Ver orçamento de outro mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="orcamentoMesTxt"></span><input type="month" id="orcamentoMesInput" class="mes-pill-input" aria-label="Mês do orçamento" onchange="mudarFiltroMes(this.value)"></label>
+        <button class="secondary small" onclick="irHome()">Voltar</button>
+      </div>
     </div>
     <div class="hint" id="orcamentoMesLabel" style="margin-bottom:12px;"></div>
     <div class="orc-total-box">
@@ -1073,6 +1083,10 @@
       <button type="button" class="secondary small" onclick="fecharIncluirCategoriaOrcamento()">Cancelar</button>
     </div>
     <div id="orcamentoCategoriasList"></div>
+    <div class="sf-section">
+      <div class="sf-title">Quanto ainda posso gastar por dia</div>
+      <div id="sfOrcamento"></div>
+    </div>
   </div>
 </div>
 
@@ -1264,7 +1278,7 @@
   <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 4 7 6 7 10a4 4 0 0 1-7 2.6A4 4 0 0 1 5 13c0-4 4-6 7-10z"/><path d="M12 15v5M9.5 20h5"/></svg></span> Poker</span>
     <span class="h2-actions">
       <button class="secondary small" onclick="abrirPoker()">Torneios</button>
-      <button class="secondary small cartoes-toggle" id="pokerGraficoToggleBtn" onclick="togglePokerGraficoOculto()" title="Ocultar/mostrar gráfico" aria-label="Ocultar ou mostrar o gráfico do poker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg><span id="pokerGraficoToggleTxt">Ocultar</span></button>
+      <button class="secondary small cartoes-toggle" id="pokerGraficoToggleBtn" onclick="togglePokerGraficoOculto()" title="Minimizar/expandir poker" aria-label="Minimizar ou expandir o painel de poker"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg><span id="pokerGraficoToggleTxt">Ocultar</span></button>
     </span>
   </h2>
   <div class="panel-body">
@@ -1566,9 +1580,12 @@
   <div class="modal-card" style="max-width:560px;">
     <div class="modal-header">
       <h3>Saúde financeira</h3>
-      <button class="modal-close-btn" onclick="fecharScoreFinanceiro()" title="Fechar" aria-label="Fechar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
-      </button>
+      <div class="modal-header-right">
+        <label class="mes-pill" title="Ver outro mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="scoreMesTxt"></span><input type="month" id="scoreMesInput" class="mes-pill-input" aria-label="Mês da saúde financeira" onchange="mudarMesScore(this.value)"></label>
+        <button class="modal-close-btn" onclick="fecharScoreFinanceiro()" title="Fechar" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
     </div>
     <div class="score-tabs">
       <button type="button" class="score-tab active" data-periodo="hoje" onclick="mudarPeriodoScore('hoje')">Hoje</button>
@@ -1603,10 +1620,6 @@
     <div class="sf-section">
       <div class="sf-title">De onde veio o dinheiro</div>
       <div id="sfEntradas"></div>
-    </div>
-    <div class="sf-section">
-      <div class="sf-title">Orçamento: quanto ainda posso gastar por dia</div>
-      <div id="sfOrcamento"></div>
     </div>
   </div>
 </div>
@@ -4257,13 +4270,28 @@ function hojeLocalISO(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// "Mês" e "3 meses" seguem o mês escolhido no seletor (o mesmo filtro de mês do app). No mês
+// atual o período vai só até hoje; num mês passado, até o último dia dele. "Hoje" é sempre hoje.
 function intervaloScorePeriodo(periodo){
   const hoje = hojeLocalISO();
   if(periodo === 'hoje') return { inicio: hoje, fim: hoje };
-  if(periodo === 'mes') return { inicio: hoje.slice(0,7) + '-01', fim: hoje };
-  let ano = Number(hoje.slice(0,4)), mes = Number(hoje.slice(5,7)) - 2;
+  const mk = currentMonthKey() || hoje.slice(0,7);
+  const ultimoDia = new Date(Number(mk.slice(0,4)), Number(mk.slice(5,7)), 0).getDate();
+  const fimMes = `${mk}-${String(ultimoDia).padStart(2,'0')}`;
+  const fim = (hoje >= mk + '-01' && hoje <= fimMes) ? hoje : fimMes;
+  if(periodo === 'mes') return { inicio: mk + '-01', fim };
+  let ano = Number(mk.slice(0,4)), mes = Number(mk.slice(5,7)) - 2;
   if(mes < 1){ mes += 12; ano -= 1; }
-  return { inicio: `${ano}-${String(mes).padStart(2,'0')}-01`, fim: hoje };
+  return { inicio: `${ano}-${String(mes).padStart(2,'0')}-01`, fim };
+}
+
+// Trocar o mês na Saúde financeira muda o filtro de mês do app todo (Home, Orçamento...).
+// Se a aba "Hoje" estava aberta, passa para "Mês", que é a que mostra o mês escolhido.
+function mudarMesScore(valor){
+  if(!valor) return;
+  if(scorePeriodoAtual === 'hoje') scorePeriodoAtual = 'mes';
+  mudarFiltroMes(valor);
+  mudarPeriodoScore(scorePeriodoAtual);
 }
 
 // Score simples e explicável: parte de uma base neutra (50), soma/subtrai conforme a taxa de
@@ -4501,17 +4529,30 @@ function renderScoreFinanceiroDetalhe(){
     dicaBox.style.visibility = 'hidden';
   }
 
-  document.getElementById('scoreEntradas').textContent = fmt(r.entradas);
-  document.getElementById('scoreSaidas').textContent = fmt(r.saidas);
+  document.getElementById('scoreEntradas').textContent = fmtQuebravel(r.entradas);
+  document.getElementById('scoreSaidas').textContent = fmtQuebravel(r.saidas);
   const resultadoEl = document.getElementById('scoreResultado');
-  resultadoEl.textContent = fmt(r.resultado);
+  resultadoEl.textContent = fmtQuebravel(r.resultado);
   resultadoEl.className = 'blur-target score-stat-valor ' + (r.resultado >= 0 ? 'pos' : 'neg');
 
+  document.getElementById('scoreMesInput').value = currentMonthKey();
+  document.getElementById('scoreMesTxt').textContent = fmtMesCurto(currentMonthKey());
   renderSaudeDetalhamento(scorePeriodoAtual);
-  renderSaudeOrcamentoDiario();
 }
 
 // ---------- Saúde financeira: detalhamento de entradas e saídas do período ----------
+// "2026-11" -> "nov/2026"
+function fmtMesCurto(mk){
+  if(!mk) return '';
+  const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return nomes[Number(mk.slice(5,7)) - 1] + '/' + mk.slice(0,4);
+}
+// Igual ao fmt, mas com espaço comum depois do "R$": em caixas estreitas o valor pode ir para a
+// linha de baixo inteiro, em vez de quebrar no meio do número.
+function fmtQuebravel(v){
+  return fmt(v).replace(/ /g, ' ');
+}
+
 function escHtml(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -4627,16 +4668,18 @@ function fmtCurtoCal(v){
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-// Sempre o mês corrente de verdade (o calendário fala de "hoje"), independente do filtro de mês.
-// Para cada categoria com orçamento: o que sobrou até ontem é dividido igualmente pelos dias que
-// faltam (contando hoje). Assim, gastar menos hoje aumenta o limite dos próximos dias e vice-versa.
-function calcularOrcamentoDiario(){
+// Calendário do orçamento de um mês (o escolhido no seletor da tela de Orçamento).
+// Mês atual: o que sobrou até ontem é dividido igualmente pelos dias que faltam (contando hoje) —
+// gastar menos hoje aumenta o limite dos próximos dias e vice-versa. Mês passado: todos os dias
+// mostram o que foi gasto. Mês futuro: o orçamento dividido igualmente por todos os dias.
+function calcularOrcamentoDiario(mk){
   const hoje = hojeLocalISO();
-  const mk = hoje.slice(0,7);
+  mk = mk || hoje.slice(0,7);
   const ano = Number(mk.slice(0,4)), mes = Number(mk.slice(5,7));
   const diasNoMes = new Date(ano, mes, 0).getDate();
-  const diaHoje = Number(hoje.slice(8,10));
-  const diasRestantes = diasNoMes - diaHoje + 1;
+  const situacao = mk === hoje.slice(0,7) ? 'atual' : (mk < hoje.slice(0,7) ? 'passado' : 'futuro');
+  const diaHoje = situacao === 'atual' ? Number(hoje.slice(8,10)) : (situacao === 'passado' ? diasNoMes + 1 : 0);
+  const diasRestantes = situacao === 'atual' ? diasNoMes - diaHoje + 1 : (situacao === 'passado' ? 0 : diasNoMes);
 
   const orc = getOrcamentoMes(mk);
   const excluidas = data.orcamentoCategoriasExcluidas || [];
@@ -4660,13 +4703,14 @@ function calcularOrcamentoDiario(){
       if(d < diaHoje) gastoAteOntem += v; else if(d === diaHoje) gastoHoje += v;
     });
     const sobraInicioHoje = orcado - gastoAteOntem;
-    const porDia = Math.max(0, sobraInicioHoje) / diasRestantes;
+    const porDia = diasRestantes > 0 ? Math.max(0, sobraInicioHoje) / diasRestantes : 0;
     return {
       nome, orcado, gastoPorDia, gastoAteOntem, gastoHoje, gastoTotal,
       restante: orcado - gastoTotal,
       porDia,
       metaDiariaOriginal: orcado / diasNoMes,
-      aindaHoje: porDia - gastoHoje
+      aindaHoje: porDia - gastoHoje,
+      mediaGastaDia: gastoTotal / diasNoMes
     };
   }
 
@@ -4675,14 +4719,14 @@ function calcularOrcamentoDiario(){
     .map(([cat, v]) => montar(cat, v, l => (l.categoria || 'Outros') === cat));
   const todas = montar('Todas', orcadoTotal, l => !excluidas.includes(l.categoria || 'Outros'));
 
-  return { hoje, mk, ano, mes, diasNoMes, diaHoje, diasRestantes, categorias, todas, temCategorias };
+  return { hoje, mk, ano, mes, diasNoMes, diaHoje, diasRestantes, situacao, categorias, todas, temCategorias };
 }
 
-function renderSaudeOrcamentoDiario(){
+function renderSaudeOrcamentoDiario(mk){
   const el = document.getElementById('sfOrcamento');
-  const o = calcularOrcamentoDiario();
+  const o = calcularOrcamentoDiario(mk || currentMonthKey());
   if(o.todas.orcado <= 0){
-    el.innerHTML = `<div class="sf-box hint">Defina um orçamento por categoria (painel Orçamento, mês ${fmtMonthKey(o.mk)}) para ver aqui quanto você ainda pode gastar por dia em cada categoria.</div>`;
+    el.innerHTML = `<div class="sf-box hint">Defina o orçamento das categorias acima para ver aqui quanto você ainda pode gastar por dia em ${fmtMonthKey(o.mk)}.</div>`;
     return;
   }
   if(sfOrcCategoriaSel !== '__todas' && !o.categorias.some(c => c.nome === sfOrcCategoriaSel)) sfOrcCategoriaSel = '__todas';
@@ -4694,12 +4738,17 @@ function renderSaudeOrcamentoDiario(){
 
   const aindaHojeCls = sel.aindaHoje < 0 ? 'neg' : 'pos';
   const restanteCls = sel.restante < 0 ? 'neg' : '';
-  const resumo = `
-    <div class="sf-hoje-box">
-      <div><div class="hint">Por dia (${o.diasRestantes} dia${o.diasRestantes === 1 ? '' : 's'})</div><div class="sf-big info blur-target">${fmt(sel.porDia)}</div></div>
-      <div><div class="hint">Ainda hoje</div><div class="sf-big ${aindaHojeCls} blur-target">${fmt(sel.aindaHoje)}</div></div>
-      <div><div class="hint">Resta no mês</div><div class="sf-big ${restanteCls} blur-target">${fmt(sel.restante)}</div></div>
-    </div>`;
+  const caixa = (rotulo, valor, cls) => `<div><div class="hint">${rotulo}</div><div class="sf-big ${cls} blur-target">${fmtQuebravel(valor)}</div></div>`;
+  const diasTxt = `${o.diasRestantes} dia${o.diasRestantes === 1 ? '' : 's'}`;
+  let resumo;
+  if(o.situacao === 'atual'){
+    resumo = caixa(`Por dia (${diasTxt})`, sel.porDia, 'info') + caixa('Ainda hoje', sel.aindaHoje, aindaHojeCls) + caixa('Resta no mês', sel.restante, restanteCls);
+  } else if(o.situacao === 'passado'){
+    resumo = caixa('Meta por dia', sel.metaDiariaOriginal, 'info') + caixa('Gasto médio/dia', sel.mediaGastaDia, sel.mediaGastaDia > sel.metaDiariaOriginal ? 'neg' : 'pos') + caixa(sel.restante < 0 ? 'Estourou' : 'Sobrou', Math.abs(sel.restante), restanteCls);
+  } else {
+    resumo = caixa(`Por dia (${diasTxt})`, sel.porDia, 'info') + caixa('Orçado', sel.orcado, '') + caixa('Já lançado', sel.gastoTotal, '');
+  }
+  resumo = `<div class="sf-hoje-box">${resumo}</div>`;
 
   // Calendário: dias passados mostram o que foi gasto (verde se ficou dentro da meta diária do
   // mês, vermelho se passou); hoje e os próximos dias mostram quanto ainda dá pra gastar.
@@ -4730,16 +4779,16 @@ function renderSaudeOrcamentoDiario(){
 
   const tabela = o.categorias.length ? `
     <div class="sf-cat-tabela">
-      <div class="sf-cat-linha cab"><span>Categoria</span><span>Resta no mês</span><span>Por dia</span></div>
+      <div class="sf-cat-linha cab"><span>Categoria</span><span>${o.situacao === 'passado' ? 'Sobrou' : 'Resta no mês'}</span><span>${o.situacao === 'passado' ? 'Gasto/dia' : 'Por dia'}</span></div>
       ${o.categorias.map(c => `<div class="sf-cat-linha ${sfOrcCategoriaSel === c.nome ? 'ativa' : ''}" data-cat="${escHtml(c.nome)}" onclick="selecionarCategoriaOrcDiario(this.dataset.cat)">
         <span>${escHtml(c.nome)}</span>
-        <span class="blur-target ${c.restante < 0 ? 'neg' : ''}">${fmt(c.restante)}</span>
-        <span class="blur-target info" style="font-weight:700;">${fmt(c.porDia)}</span>
+        <span class="blur-target ${c.restante < 0 ? 'neg' : ''}">${fmtQuebravel(c.restante)}</span>
+        <span class="blur-target info" style="font-weight:700;">${fmtQuebravel(o.situacao === 'passado' ? c.mediaGastaDia : c.porDia)}</span>
       </div>`).join('')}
     </div>` : '';
 
   el.innerHTML = `
-    <div class="hint" style="margin-bottom:8px;">Hoje é ${fmtDate(o.hoje)} · orçamento de ${escHtml(sel.nome === 'Todas' ? 'todas as categorias' : sel.nome)}: <span class="blur-target">${fmt(sel.orcado)}</span>, gasto até agora <span class="blur-target">${fmt(sel.gastoTotal)}</span>.</div>
+    <div class="hint" style="margin-bottom:8px;">${o.situacao === 'atual' ? `Hoje é ${fmtDate(o.hoje)} · ` : `${fmtMonthKey(o.mk)} · `}orçamento de ${escHtml(sel.nome === 'Todas' ? 'todas as categorias' : sel.nome)}: <span class="blur-target">${fmt(sel.orcado)}</span>, gasto ${o.situacao === 'passado' ? 'no mês' : 'até agora'} <span class="blur-target">${fmt(sel.gastoTotal)}</span>.</div>
     <div class="sf-chips">${chips}</div>
     ${resumo}
     <div class="sf-cal">${cal}</div>
@@ -4748,7 +4797,11 @@ function renderSaudeOrcamentoDiario(){
       <span><i style="background:var(--red)"></i>passou da meta</span>
       <span><i style="background:var(--blue)"></i>quanto ainda pode gastar</span>
     </div>
-    <div class="sf-nota">O que sobrou do orçamento até ontem é dividido igualmente pelos ${o.diasRestantes} dias que faltam (contando hoje). Gastar menos hoje aumenta o limite dos próximos dias.</div>
+    <div class="sf-nota">${o.situacao === 'atual'
+      ? `O que sobrou do orçamento até ontem é dividido igualmente pelos ${o.diasRestantes} dias que faltam (contando hoje). Gastar menos hoje aumenta o limite dos próximos dias.`
+      : (o.situacao === 'passado'
+        ? 'Mês encerrado: cada dia mostra quanto foi gasto, comparado com a meta diária (orçamento ÷ dias do mês).'
+        : 'Mês futuro: o orçamento dividido igualmente por todos os dias do mês.')}</div>
     ${tabela}`;
 }
 
@@ -4857,6 +4910,9 @@ function renderOrcamento(){
   const gastoTotal = gastoTotalOrcamento(gastoPorCat);
 
   document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
+  document.getElementById('orcamentoMesInput').value = monthKey;
+  document.getElementById('orcamentoMesTxt').textContent = fmtMesCurto(monthKey);
+  renderSaudeOrcamentoDiario(monthKey);
   atualizarResumoOrcamentoTotal(orcamentoTotalMes(monthKey), gastoTotal);
 
   const todasCategorias = categoriasVisiveisOrcamento(gastoPorCat);
@@ -5881,7 +5937,7 @@ function toggleCartoesMinimizado(){
 }
 document.addEventListener('DOMContentLoaded', aplicarCartoesMinimizado);
 
-// Ocultar o gráfico do painel de Poker na Home (os totais continuam visíveis): lembra a escolha neste aparelho.
+// Minimizar o painel de Poker na Home (fica só o cabeçalho): lembra a escolha neste aparelho.
 function aplicarPokerGraficoOculto(){
   let oculto = false;
   try{ oculto = localStorage.getItem('broto_poker_grafico_oculto') === '1'; }catch(e){}
