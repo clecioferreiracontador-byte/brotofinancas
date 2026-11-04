@@ -6274,11 +6274,14 @@ function renderInvestimentos(){
 }
 
 // ---------- Poker (só para o usuário autorizado) ----------
-// O painel e a tela de torneios só existem para este e-mail. Isto é só uma trava de interface:
-// os dados ficam no documento do próprio usuário, então nenhum outro login enxerga nada.
+// O painel e a tela de torneios só existem para estes e-mails. Isto é só uma trava de interface:
+// os dados ficam no documento do próprio usuário, então cada login vê só o próprio poker.
+const POKER_EMAILS_EXTRAS = ['vinicimdeudi@gmail.com'];
 function usuarioPokerAutorizado(){
   const u = auth.currentUser;
-  return !!(u && u.email && u.email.toLowerCase().indexOf('clecioferreira.contador@') === 0);
+  if(!u || !u.email) return false;
+  const email = u.email.toLowerCase();
+  return email.indexOf('clecioferreira.contador@') === 0 || POKER_EMAILS_EXTRAS.includes(email);
 }
 
 function pokerEsc(s){
