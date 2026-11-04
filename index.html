@@ -590,7 +590,7 @@
   .meta-invest-box .linha1{display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; font-size:0.85rem; font-weight:600;}
   .meta-invest-box .linha2{display:flex; justify-content:space-between; margin-top:6px; font-size:0.76rem; color:var(--muted);}
 
-  /* Quadrinho de Saúde Financeira (score), entre Cartões e Pé de Meia na Home */
+  /* Quadrinho de Saúde Financeira (score), abaixo do Poker na Home */
   .score-mini-card{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:border-color .15s; gap:10px; }
   .score-mini-card:hover{ border-color:var(--blue); }
   .score-mini-left{ display:flex; align-items:center; gap:10px; }
@@ -646,6 +646,10 @@
   .sf-cal-dia.hoje{ border-color:var(--blue); background:color-mix(in srgb, var(--blue) 14%, var(--card2)); }
   .sf-cal-dia.hoje .n{ color:var(--blue); }
   .sf-cal-vazio{ min-height:44px; }
+  /* No celular, os valores do calendário de "quanto ainda dá pra gastar por dia" ficam um pouco menores */
+  @media (max-width: 600px){
+    .sf-cal-dia .v{ font-size:0.62rem; }
+  }
   .sf-legenda{ display:flex; flex-wrap:wrap; gap:4px 12px; font-size:0.68rem; color:var(--muted); margin-top:8px; }
   .sf-legenda i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
   .sf-cat-tabela{ margin-top:12px; }
@@ -1268,17 +1272,6 @@
   </div>
 </div>
 
-<div class="panel row-gap score-mini-card" id="panelScoreFinanceiro" onclick="abrirScoreFinanceiro()">
-  <div class="score-mini-left">
-    <span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 15.5 8.5"/><path d="M12 3v1.5M21 12h-1.5M3 12h1.5M18.36 5.64l-1.06 1.06M5.64 5.64l1.06 1.06"/></svg></span>
-    <div>
-      <div class="score-mini-title">Saúde financeira</div>
-      <div class="hint">Toque para ver o resumo</div>
-    </div>
-  </div>
-  <div class="score-mini-value" id="scoreFinanceiroMiniValor">-- /100</div>
-</div>
-
 <div class="panel row-gap" id="panelInvestimentos">
   <h2><span class="title"><span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V12"/><path d="M12 12C12 8 9 6 6 6c0 4 2 6 6 6z"/><path d="M12 12c0-5 3-8 7-8 0 5-3 8-7 8z"/></svg></span> Pé de Meia</span>
     <span class="h2-actions">
@@ -1318,6 +1311,17 @@
     <div class="chart-box" style="height:200px;"><canvas id="chartPokerBankroll"></canvas></div>
     </div>
   </div>
+</div>
+
+<div class="panel row-gap score-mini-card" id="panelScoreFinanceiro" onclick="abrirScoreFinanceiro()">
+  <div class="score-mini-left">
+    <span class="h2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 12 15.5 8.5"/><path d="M12 3v1.5M21 12h-1.5M3 12h1.5M18.36 5.64l-1.06 1.06M5.64 5.64l1.06 1.06"/></svg></span>
+    <div>
+      <div class="score-mini-title">Saúde financeira</div>
+      <div class="hint">Toque para ver o resumo</div>
+    </div>
+  </div>
+  <div class="score-mini-value" id="scoreFinanceiroMiniValor">-- /100</div>
 </div>
 
 <div class="grid2 row-gap">
