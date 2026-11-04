@@ -407,12 +407,20 @@
   #relatorioModoPeriodo, #relatorioMesDe, #relatorioMesAte{
     width:130px; max-width:100%; -webkit-min-logical-width:130px;
   }
-  /* Seletor de mês compacto (Orçamento e Saúde financeira): mostra "nov/2026" num botão e deixa o
-     input[type=month] invisível por cima, ocupando o botão todo — o toque cai no próprio input e
-     abre o seletor nativo. Assim o texto nunca fica cortado nem empurra nada para fora da tela. */
+  /* Seletor de mês compacto (Orçamento e Saúde financeira): botão "nov/2026" que abre um quadro
+     próprio do app com o ano e os 12 meses. Não usa o input[type=month] nativo porque, no
+     computador, ele só abre ao clicar no iconezinho (e no Firefox nem existe). */
+  .mes-pill-wrap{ position:relative; flex-shrink:0; }
   .mes-pill{ position:relative; display:inline-flex; align-items:center; gap:4px; height:32px; padding:0 10px; border:1px solid var(--border); border-radius:8px; background:var(--card2); color:var(--text); font-size:0.78rem; font-weight:600; white-space:nowrap; cursor:pointer; flex-shrink:0; }
   .mes-pill svg{ width:13px; height:13px; color:var(--muted); }
-  input[type="month"].mes-pill-input{ position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; border:none; opacity:0; min-width:0; max-width:none; -webkit-min-logical-width:0; cursor:pointer; }
+  .mes-pop{ position:absolute; top:calc(100% + 6px); right:0; z-index:50; width:228px; max-width:calc(100vw - 32px); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,0.35); }
+  .mes-pop-ano{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-weight:700; font-size:0.9rem; }
+  .mes-pop-ano button{ background:var(--card2); border:1px solid var(--border); color:var(--text); border-radius:8px; width:32px; height:30px; padding:0; cursor:pointer; font-size:1rem; line-height:1; }
+  .mes-pop-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .mes-pop-grid button{ background:var(--card2); border:1px solid transparent; color:var(--text); border-radius:8px; padding:8px 0; font-size:0.8rem; font-weight:600; cursor:pointer; text-transform:capitalize; }
+  .mes-pop-grid button:hover{ border-color:var(--blue); }
+  .mes-pop-grid button.atual{ border-color:var(--border); color:var(--blue); }
+  .mes-pop-grid button.sel{ background:var(--blue); border-color:var(--blue); color:#fff; }
 
   /* Telas de página inteira abertas pela barra inferior (Lançamentos, Orçamento, Provisões, Extratos):
      substituem o conteúdo da Home em vez de flutuar por cima dela. Home volta pelo botão "Home". */
@@ -1056,7 +1064,7 @@
     <div class="modal-header">
       <h3>Orçamento do Mês</h3>
       <div class="modal-header-right">
-        <label class="mes-pill" title="Ver orçamento de outro mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="orcamentoMesTxt"></span><input type="month" id="orcamentoMesInput" class="mes-pill-input" aria-label="Mês do orçamento" onchange="mudarFiltroMes(this.value)"></label>
+        <div class="mes-pill-wrap"><button type="button" class="mes-pill" title="Ver orçamento de outro mês" aria-label="Escolher o mês do orçamento" aria-haspopup="true" onclick="abrirSeletorMes(this, mudarFiltroMes)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="orcamentoMesTxt"></span></button></div>
         <button class="secondary small" onclick="irHome()">Voltar</button>
       </div>
     </div>
@@ -1581,7 +1589,7 @@
     <div class="modal-header">
       <h3>Saúde financeira</h3>
       <div class="modal-header-right">
-        <label class="mes-pill" title="Ver outro mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="scoreMesTxt"></span><input type="month" id="scoreMesInput" class="mes-pill-input" aria-label="Mês da saúde financeira" onchange="mudarMesScore(this.value)"></label>
+        <div class="mes-pill-wrap"><button type="button" class="mes-pill" title="Ver outro mês" aria-label="Escolher o mês da saúde financeira" aria-haspopup="true" onclick="abrirSeletorMes(this, mudarMesScore)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span id="scoreMesTxt"></span></button></div>
         <button class="modal-close-btn" onclick="fecharScoreFinanceiro()" title="Fechar" aria-label="Fechar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
@@ -2242,6 +2250,7 @@ function sincronizarFundoHtml(naHome){
 
 function mostrarView(viewId){
   if(typeof fecharPainelModal === 'function') fecharPainelModal();
+  if(typeof fecharSeletorMes === 'function') fecharSeletorMes();
   VIEW_IDS.forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = (id === viewId) ? 'block' : 'none';
@@ -4352,6 +4361,7 @@ function abrirScoreFinanceiro(){
   mudarPeriodoScore(scorePeriodoAtual);
 }
 function fecharScoreFinanceiro(){
+  fecharSeletorMes();
   document.getElementById('scoreModal').style.display = 'none';
   liberarScrollFundo();
 }
@@ -4535,12 +4545,61 @@ function renderScoreFinanceiroDetalhe(){
   resultadoEl.textContent = fmtQuebravel(r.resultado);
   resultadoEl.className = 'blur-target score-stat-valor ' + (r.resultado >= 0 ? 'pos' : 'neg');
 
-  document.getElementById('scoreMesInput').value = currentMonthKey();
   document.getElementById('scoreMesTxt').textContent = fmtMesCurto(currentMonthKey());
   renderSaudeDetalhamento(scorePeriodoAtual);
 }
 
 // ---------- Saúde financeira: detalhamento de entradas e saídas do período ----------
+// Quadro de escolha de mês (ano com setas + 12 meses), aberto pelo botão "nov/2026".
+// aoEscolher recebe "AAAA-MM".
+function fecharSeletorMes(){
+  document.querySelectorAll('.mes-pop').forEach(p => p.remove());
+  document.removeEventListener('mousedown', fecharSeletorMesFora, true);
+  document.removeEventListener('touchstart', fecharSeletorMesFora, true);
+  document.removeEventListener('keydown', fecharSeletorMesEsc);
+}
+function fecharSeletorMesFora(e){
+  if(!e.target.closest('.mes-pill-wrap')) fecharSeletorMes();
+}
+function fecharSeletorMesEsc(e){
+  if(e.key === 'Escape') fecharSeletorMes();
+}
+function abrirSeletorMes(btn, aoEscolher){
+  const wrap = btn.parentElement;
+  const jaAberto = wrap.querySelector('.mes-pop');
+  fecharSeletorMes();
+  if(jaAberto) return;
+  const selecionado = currentMonthKey() || hojeLocalISO().slice(0,7);
+  const mesHoje = hojeLocalISO().slice(0,7);
+  let ano = Number(selecionado.slice(0,4));
+  const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const pop = document.createElement('div');
+  pop.className = 'mes-pop';
+  pop.setAttribute('role', 'dialog');
+  function desenhar(){
+    pop.innerHTML = `<div class="mes-pop-ano">
+        <button type="button" data-ano="-1" aria-label="Ano anterior">‹</button>
+        <span>${ano}</span>
+        <button type="button" data-ano="1" aria-label="Próximo ano">›</button>
+      </div>
+      <div class="mes-pop-grid">${nomes.map((n, i) => {
+        const mk = `${ano}-${String(i+1).padStart(2,'0')}`;
+        return `<button type="button" data-mes="${mk}" class="${mk === selecionado ? 'sel' : ''} ${mk === mesHoje ? 'atual' : ''}">${n}</button>`;
+      }).join('')}</div>`;
+  }
+  pop.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if(!b) return;
+    if(b.dataset.ano){ ano += Number(b.dataset.ano); desenhar(); return; }
+    if(b.dataset.mes){ fecharSeletorMes(); aoEscolher(b.dataset.mes); }
+  });
+  desenhar();
+  wrap.appendChild(pop);
+  document.addEventListener('mousedown', fecharSeletorMesFora, true);
+  document.addEventListener('touchstart', fecharSeletorMesFora, true);
+  document.addEventListener('keydown', fecharSeletorMesEsc);
+}
+
 // "2026-11" -> "nov/2026"
 function fmtMesCurto(mk){
   if(!mk) return '';
@@ -4910,7 +4969,6 @@ function renderOrcamento(){
   const gastoTotal = gastoTotalOrcamento(gastoPorCat);
 
   document.getElementById('orcamentoMesLabel').textContent = 'Referente a ' + monthKey.split('-').reverse().join('/');
-  document.getElementById('orcamentoMesInput').value = monthKey;
   document.getElementById('orcamentoMesTxt').textContent = fmtMesCurto(monthKey);
   renderSaudeOrcamentoDiario(monthKey);
   atualizarResumoOrcamentoTotal(orcamentoTotalMes(monthKey), gastoTotal);
